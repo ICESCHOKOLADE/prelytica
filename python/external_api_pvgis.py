@@ -1,1 +1,1 @@
-print 'this is the  PVGIS api part'
+#print 'this is the  PVGIS api part'
