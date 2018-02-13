@@ -1,2 +1,2 @@
-#print 'this is the  PVGIS api part'
-rklfkdl
+print 'this is the  PVGIS api part'
+
