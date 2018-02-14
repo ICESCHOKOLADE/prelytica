@@ -1,2 +1,234 @@
-print 'this is the  PVGIS api part'
+########################
+###
+### author:     Stefan Rieder
+### init_date:     09.02.2018
+### topic:         fetch data from pvgis and process it into schema
+###
+#######################
 
+
+import requests
+import datetime, json
+from helper import *
+import psycopg2
+import psycopg2.extras
+
+
+
+try:
+    conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+except:
+    print "I am unable to connect to the database"
+# cur = conn.cursor()
+cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+
+class PVGIS_DATA(object):
+    """docstring for PVGIS_DATA"""
+    def __init__(self, plant_data):
+        super(PVGIS_DATA, self).__init__()
+        self.months_init = {"1":{}, "2":{}, "3":{}, "4":{}, "5":{}, "6":{}, "7":{}, "8":{}, "9":{}, "10":{}, "11":{}, "12":{}, "Year":{}}
+        self.aspect = plant_data.aspect
+        self.tilt     = plant_data.tilt
+        self.system_loss         = plant_data.system_loss
+        self.module_efficiency     = plant_data.module_efficiency
+        self.lat = plant_data.lat
+        self.lon = plant_data.lon
+
+        self.data_cached = self.check_cached_data()
+        if self.data_cached:
+            self.handle_cached_data()
+        else:
+            self.raw_pv_data = self.pvgis_get_pv_values()
+            if self.raw_pv_data == 503:
+                print "ERROR, NO PV PVGIS DATA"
+            # this sets self.pv_month and self.pv_day
+            self.process_pvgis_pv("tab_pv")
+            # print self.pv_month
+            # print self.pv_day
+
+            self.raw_rad_data = self.pvgis_get_rad_values()
+            if self.raw_rad_data == 503:
+                print "ERROR, NO PV PVGIS DATA"
+            # this sets self.rad_month
+            self.process_pvgis_pv("tab_rad")
+            # self.pvgis_scaffold_factor = get_pvgis_scaffold_factor(self.pvgis_rad_monthly)
+            # print self.rad_month
+            self.set_cache_data()
+
+        m = "1"
+        self.pv_hour = self.months_init.copy()
+        if "Year" in self.pv_hour:
+            del self.pv_hour["Year"]
+        print "self.pv_hour", self.pv_hour
+        self.raw_day_data = {}
+        self.raw_day_data[m] = self.pvgis_5_get_daily_values(m)
+        self.process_pvgis_daily(m)
+        # for m in months_init:
+
+
+# http://re.jrc.ec.europa.eu/pvgis5/seriescalc.php?lat=50.000&lon=+9.000&raddatabase=PVGIS-CMSAF&browser=1&userhorizon=&usehorizon=1&angle=30&azimuth=0&startyear=2016&endyear=2016&mountingplace=&optimalinclination=0&optimalangles=0&select_database_hourly=PVGIS-CMSAF&hstartyear=2016&hendyear=2016&trackingtype=0&hourlyangle=30&hourlyaspect=0&components=1
+        print "CSV DOWNLOAD"
+
+    def process_pvgis_daily(self, m):
+        a = self.raw_day_data[m].replace("\t",";").split("\n")
+        for i in a:
+            x = i.split(";")
+            h = int(x[0].split(":")[0])+1 # 22:45 -> 23
+            self.pv_hour[m][h] = int(x[1])
+        print self.pv_hour
+
+
+    def set_cache_data(self):
+        query = """ INSERT INTO cache_pvgis (type, data, lat, lon, tilt, aspect)
+                    VALUES ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s)
+                     """%("pv_day", json.dumps(self.pv_day), self.lat, self.lon, self.tilt, self.aspect, "pv_month", json.dumps(self.pv_month), self.lat, self.lon, self.tilt, self.aspect)
+        # print query
+        print "- only setting pv data (orientated)"
+        cur.execute(query)        
+
+        conn.commit()
+
+
+    def handle_cached_data(self):
+        for i in self.data_cached:
+            if i["type"] == "pv_day":
+                self.pv_day = i["data"]
+            elif i["type"] == "pv_month":
+                self.pv_month = i["data"]
+            else:
+                print "AND NOW?"
+
+
+    def check_cached_data(self):
+        query = """SELECT * FROM cache_pvgis WHERE lat = %s AND lon = %s AND tilt = %s AND aspect = %s """%(self.lat, self.lon, self.tilt, self.aspect)
+        cur.execute(query)
+        data_cached = cur.fetchall()
+        # print query
+        # print self.data_cached
+        if not data_cached:
+            data_cached = None
+        return data_cached
+
+    def process_pvgis_pv(self, name):
+        repl = {"Jan":"1","Feb":"2","Mar":"3","Apr":"4","May":"5","Jun":"6","Jul":"7","Aug":"8","Sep":"9","Oct":"10","Nov":"11","Dec":"12"}
+
+        if name == "tab_pv":
+            self.pv_month = self.months_init.copy()
+            self.pv_day = self.months_init.copy()
+            data_in = self.raw_pv_data
+            result = data_in.replace("\t",",").replace("\n",";").replace("\r","").split("Hm")[1].split("Ed:")[0].replace(",,",",").replace(";;",";")
+        elif name == "tab_rad":
+            self.rad_month = self.months_init.copy()
+            data_in = self.raw_rad_data
+            result = data_in.replace("\t",",").replace("\n",";").replace("\r","").split("Hh")[1].replace(",,",",").replace(";;",";").replace(" ","")
+            for key in repl:
+                result = result.replace(key, repl[key])
+        values = result.split(";")
+        i = 0
+        for j in values: 
+            if len(j) < 1:
+                del values[i]
+            i=i+1
+        i=0
+        for val in values:
+            v = val.encode("utf-8").split(",")
+            if name == "tab_pv":
+                self.pv_day[v[0]] = float(v[3])
+                self.pv_month[v[0]] = float(v[4])
+            else:
+                self.rad_month[v[0]] = int(v[1])
+            i = i+1
+
+
+
+    def pvgis_get_pv_values(self):
+        # in actual version only Hm (Average sum of global irradiation per square meter received by the modules of 
+        # the given system (kWh/m2)) is used, so some params like loss have no influence
+        url = "http://139.191.1.113"
+        url_2 = "http://re.jrc.ec.europa.eu"
+        data = {'regionname': 'europe',
+                 'pv_database': 'PVGIS-CMSAF',
+                 'MAX_FILE_SIZE': '10000',
+                 'pvtechchoice': 'crystSi',
+                 'peakpower': 1,
+                 'efficiency': self.system_loss * self.module_efficiency * 100,
+                 'mountingplace': 'building',
+                 'angle': self.tilt,
+                 'aspectangle': self.aspect,
+                 'outputchoicebuttons': 'text',
+                 'sbutton': 'Calculate',
+                 'outputformatchoice': 'csv',
+                 'optimalchoice': '',
+                 'latitude': str(self.lat),
+                 'longitude': str(self.lon),
+                 'regionname': 'europe',
+                 'language': 'en_en'
+            }
+        try:
+            result = requests.post('%s/pvgis/apps4/PVcalc.php'%url, data, files={})
+        except:
+            try:
+                result = requests.post('%s/pvgis/apps4/PVcalc.php'%url, data, files={})
+            except:
+                return 503
+
+        # print result.text
+        return result.text
+
+
+    def pvgis_get_rad_values(self):
+        # only irradiation on horizontal plane (Wh/m2/day)
+        url = "http://139.191.1.113"
+        url_2 = "http://re.jrc.ec.europa.eu"    
+        data = {'regionname': 'europe',
+                 'mr_database': 'PVGIS-CMSAF',
+                 'horirrad': 'true',
+                 'optrad': 'false',
+                 'selectrad': 'false',
+                 'monthradangle': '30',
+                 'optincl': 'false',
+                 'avtemp': 'false',
+                 'degreedays': 'false',
+                 'outputchoicebuttons': 'text',
+                 'sbutton': 'Calculate',
+                 'outputformatchoice': 'csv',
+                 'optimalchoice': '',
+                 'latitude': str(self.lat),
+                 'longitude': str(self.lon),
+                 'regionname': 'europe',
+                 'language': 'en_en'
+                 }
+
+        try:
+            result = requests.post('%s/pvgis/apps4/MRcalc.php'%url, data)
+        except:
+            try:
+                result = requests.post('%s/pvgis/apps4/MRcalc.php'%url, data)
+            except:
+                return 503
+        return result.text
+
+
+    def pvgis_5_get_daily_values(self, month):
+        url = "http://re.jrc.ec.europa.eu"    
+        data = {
+                "lat": str(self.lat),
+                "lon": str(self.lon),
+                "raddatabase": 'PVGIS-CMSAF',
+                "outputformat": 'basic',
+                "browser": 0,
+                "month": month,
+                "usehorizon": 1,
+                "userhorizon": "True",
+                "localtime": 0,
+                "global": 1,
+                "angle": self.tilt,
+                "aspect": self.aspect,
+                "glob_2axis": 1
+                 }
+
+        try:
+            result = requests.get('%s/pvgis5/DRcalc.php'%url, data)
+        except:
+            return 503
+        return result.text
