@@ -33,8 +33,8 @@ class PLANT(object):
 		self.module_efficiency = 0.15
 
 
-lat = 50
-lon = 9
+lat = 51
+lon = 10
 
 
 plant_data = PLANT(lat, lon)

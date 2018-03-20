@@ -22,11 +22,29 @@ except:
 # cur = conn.cursor()
 cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
+
+
+month_english = {
+    1:"January",
+    2:"February",
+    3:"March",
+    4:"April",
+    5:"May",
+    6:"June",
+    7:"July",
+    8:"August",
+    9:"September",
+    10:"October",
+    11:"November",
+    12:"December"
+}
+
+
 class PVGIS_DATA(object):
     """docstring for PVGIS_DATA"""
     def __init__(self, plant_data):
         super(PVGIS_DATA, self).__init__()
-        self.months_init = {"1":{}, "2":{}, "3":{}, "4":{}, "5":{}, "6":{}, "7":{}, "8":{}, "9":{}, "10":{}, "11":{}, "12":{}, "Year":{}}
+        self.months_init = {"1":{}, "2":{}, "3":{}, "4":{}, "5":{}, "6":{}, "7":{}, "8":{}, "9":{}, "10":{}, "11":{}, "12":{}}
         self.aspect = plant_data.aspect
         self.tilt     = plant_data.tilt
         self.system_loss         = plant_data.system_loss
@@ -37,6 +55,7 @@ class PVGIS_DATA(object):
         self.data_cached = self.check_cached_data()
         if self.data_cached:
             self.handle_cached_data()
+            # print "hhhh", self.pv_hour
         else:
             self.raw_pv_data = self.pvgis_get_pv_values()
             if self.raw_pv_data == 503:
@@ -53,35 +72,66 @@ class PVGIS_DATA(object):
             self.process_pvgis_pv("tab_rad")
             # self.pvgis_scaffold_factor = get_pvgis_scaffold_factor(self.pvgis_rad_monthly)
             # print self.rad_month
+
+            # self.pv_hour = self.months_init.copy()
+            # if "Year" in self.pv_hour:
+            #     del self.pv_hour["Year"]
+            self.raw_day_data = {}
+            self.pv_hour = {}
+            for m in range(1,13):
+                self.raw_day_data[m] = self.pvgis_4_get_daily_values(m)
+                self.process_pvgis_daily(m)
+            # print "self.pv_hour", self.pv_hour
+            
             self.set_cache_data()
 
-        m = "1"
-        self.pv_hour = self.months_init.copy()
-        if "Year" in self.pv_hour:
-            del self.pv_hour["Year"]
-        print "self.pv_hour", self.pv_hour
-        self.raw_day_data = {}
-        self.raw_day_data[m] = self.pvgis_5_get_daily_values(m)
-        self.process_pvgis_daily(m)
-        # for m in months_init:
+        self.calculate_year_percentage()
+
+        print "FINISH PVGIS"
+
+        # http://re.jrc.ec.europa.eu/pvgis5/seriescalc.php?lat=50.000&lon=+9.000&raddatabase=PVGIS-CMSAF&browser=1&userhorizon=&usehorizon=1&angle=30&azimuth=0&startyear=2016&endyear=2016&mountingplace=&optimalinclination=0&optimalangles=0&select_database_hourly=PVGIS-CMSAF&hstartyear=2016&hendyear=2016&trackingtype=0&hourlyangle=30&hourlyaspect=0&components=1
 
 
-# http://re.jrc.ec.europa.eu/pvgis5/seriescalc.php?lat=50.000&lon=+9.000&raddatabase=PVGIS-CMSAF&browser=1&userhorizon=&usehorizon=1&angle=30&azimuth=0&startyear=2016&endyear=2016&mountingplace=&optimalinclination=0&optimalangles=0&select_database_hourly=PVGIS-CMSAF&hstartyear=2016&hendyear=2016&trackingtype=0&hourlyangle=30&hourlyaspect=0&components=1
-        print "CSV DOWNLOAD"
+    def calculate_year_percentage(self):
+    	self.global_climate_mean = {
+    	    "month":{}
+    	}
+    	pvgis_year_sum, pvgis_month_sum, pvgis_day_sum = 0,0,0
+    	for m in self.pv_month:
+    		pvgis_year_sum += self.pv_month[m]
+    		if m == "12":
+    			print len(self.pv_hour[m])
+    			for h in self.pv_hour[m]:
+    				# print m, h
+    				pvgis_day_sum += self.pv_hour[m][h]
+    	a = 0
+    	print "pvgis_day_sum", pvgis_day_sum
+    	print "Tagessumme stimmt nicht überein"
+    	for m in self.pv_month:
+    		self.global_climate_mean["month"][m] = round(self.pv_month[m] / pvgis_year_sum, 6)
+    	print self.global_climate_mean
+    	print pvgis_year_sum
+
+
+
+
 
     def process_pvgis_daily(self, m):
-        a = self.raw_day_data[m].replace("\t",";").split("\n")
-        for i in a:
+        self.pv_hour[m] = {}
+        a = self.raw_day_data[m].replace("\t\t",";").replace("\r","").split("Gd")[1].split("G:")[0]
+        for i in a.split("\n"):
+            if len(i) < 3:
+                continue
             x = i.split(";")
-            h = int(x[0].split(":")[0])+1 # 22:45 -> 23
-            self.pv_hour[m][h] = int(x[1])
-        print self.pv_hour
+            h = x[0]
+            # h = int(i[0].split(":")[0])+1 # 22:45 -> 23
+            self.pv_hour[m][str(h)] = round(float(x[1])/1000.0,6) # in PVGIS: this is W/sqm, not kWh!
 
 
     def set_cache_data(self):
         query = """ INSERT INTO cache_pvgis (type, data, lat, lon, tilt, aspect)
-                    VALUES ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s)
-                     """%("pv_day", json.dumps(self.pv_day), self.lat, self.lon, self.tilt, self.aspect, "pv_month", json.dumps(self.pv_month), self.lat, self.lon, self.tilt, self.aspect)
+                    VALUES ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s)
+                     """%("pv_day", json.dumps(self.pv_day), self.lat, self.lon, self.tilt, self.aspect, "pv_month", json.dumps(self.pv_month), self.lat, self.lon, self.tilt, self.aspect, "pv_hour", json.dumps(self.pv_hour), self.lat, self.lon, self.tilt, self.aspect)
         # print query
         print "- only setting pv data (orientated)"
         cur.execute(query)        
@@ -95,16 +145,18 @@ class PVGIS_DATA(object):
                 self.pv_day = i["data"]
             elif i["type"] == "pv_month":
                 self.pv_month = i["data"]
+            elif i["type"] == "pv_hour":
+                self.pv_hour = i["data"]                
             else:
-                print "AND NOW?"
+                print "AND NOW? Data from cache is not set"
 
 
     def check_cached_data(self):
         query = """SELECT * FROM cache_pvgis WHERE lat = %s AND lon = %s AND tilt = %s AND aspect = %s """%(self.lat, self.lon, self.tilt, self.aspect)
         cur.execute(query)
         data_cached = cur.fetchall()
-        # print query
-        # print self.data_cached
+        print query
+        # print data_cached
         if not data_cached:
             data_cached = None
         return data_cached
@@ -132,11 +184,12 @@ class PVGIS_DATA(object):
         i=0
         for val in values:
             v = val.encode("utf-8").split(",")
-            if name == "tab_pv":
-                self.pv_day[v[0]] = float(v[3])
-                self.pv_month[v[0]] = float(v[4])
-            else:
-                self.rad_month[v[0]] = int(v[1])
+            if v[0] != "Year":
+	            if name == "tab_pv":
+	                self.pv_day[str(v[0])] = float(v[3])
+	                self.pv_month[str(v[0])] = float(v[4])
+	            else:
+	                self.rad_month[str(v[0])] = int(v[1])
             i = i+1
 
 
@@ -206,6 +259,33 @@ class PVGIS_DATA(object):
                 result = requests.post('%s/pvgis/apps4/MRcalc.php'%url, data)
             except:
                 return 503
+        return result.text
+
+
+    def pvgis_4_get_daily_values(self, month):
+        month_word = month_english[month]
+        url = "http://re.jrc.ec.europa.eu"    
+        data = {
+                "region": "europe",
+                "dr_database": 'PVGIS-CMSAF',
+                'sbutton': 'Calculate',
+                'outputformatchoice': 'csv',
+                 'outputchoicebuttons': 'text',
+                "global": 1,
+                "month": month_word,
+                 'lat': str(self.lat),
+                 'lon': str(self.lon),                
+                "DRangle": self.tilt,
+                "DRaspectangle": self.aspect,
+                "angle": self.tilt,
+                "aspect": self.aspect
+                 }
+
+        try:
+            result = requests.get('%s/pvgis/apps4/DRcalc.php'%url, data)
+            # print "....", result.text
+        except:
+            return 503
         return result.text
 
 
