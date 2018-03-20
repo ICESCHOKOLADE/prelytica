@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Prelytika | SPA</title>
+	<link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/fontawesome.css" integrity="sha384-q3jl8XQu1OpdLgGFvNRnPdj5VIlCvgsDQTQB6owSOHWlAurxul7f+JpUOVdAiJ5P" crossorigin="anonymous">
+
+
+
+	<script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="/static/js/jquery-3.3.1.min.js"></script>
+
+	<style type="text/css">
+		iframe{
+			overflow: hidden;
+		}
+		.row{
+			padding-top: 2rem;
+		}
+		.roof_table
+		{
+			display: none;
+		}
+	</style>
+</head>
+<body>
+
+
+<div class="container">
+	<div class="row">
+		<div class="col-lg-12 text-center">
+			<h3 class="mt-5">Datenübersicht ({{ data['results'][0]['address']['lon'] }}, {{ data['results'][0]['address']['lat'] }})</h3>
+			<p class="lead">Gebäudeinformationen, Dachflächen, Einstrahlung, Wetterdaten</p>
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-4 text-center">
+			<img width="300px" src="{{data['results'][0]['images']['radiation_large']}}">
+		</div>
+		<div class="col-lg-4 text-center">
+			<img width="300px" src="{{data['results'][0]['images']['roofs_large']}}">
+		</div>
+<!-- 		<div class="col-lg-4 text-center">
+
+			<iframe height="300px" src="{{data['results'][0]['map_layers'][1]['url']}}"></iframe>
+		</div>	 -->	
+
+		<div class="col-lg-4">
+			<table class="table table-striped">
+				<tbody>
+					<tr>
+						<td>ID</td>
+						<td>{{data['results'][0]['address']['hid']}}</td>
+					</tr>
+					<tr>
+						<td>Eignung PV</td>
+						<td>Sehr gut</td>
+					</tr>
+					<tr>
+						<td>Eignung ST</td>
+						<td>Sehr gut</td>
+					</tr>																			
+				</tbody>
+			</table>			
+		</div>
+	</div>
+	<div class="row">
+		<div class="col-lg-6">
+			<h4>Maximalwerte</h4>
+			<table class="table table-striped">
+				<tbody>
+					<tr>
+						<td>Gut geeignete Fläche</td>
+						<td>{{data['results'][0]['data']['pv_area_well_suited']}} m²</td>
+					</tr>
+					<tr>
+						<td>Geeignete Fläche</td>
+						<td>{{data['results'][0]['data']['pv_area_suited']}} m²</td>
+					</tr>
+					<tr>
+						<td>Bedingt geeignete Fläche</td>
+						<td>{{data['results'][0]['data']['pv_area_barely_suited']}} m²</td>
+					</tr>	
+					<tr>
+						<td>Maximale Anlagengröße</td>
+						<td>{{data['results'][0]['data']['max_kwp']}} kWp ({{data['results'][0]['data']['max_panels']}} Module)</td>
+					</tr>	
+					<tr>
+						<td>Maximaler Jahresertrag</td>
+						<td>{{ data['results'][0]['data']['max_energy'] }} kWh</td>
+					</tr>																				
+				</tbody>
+			</table>
+		</div>
+		<div class="col-lg-6">
+			<h4>Anlagenwerte</h4>
+			<table class="table table-striped">
+				<tbody>
+					<tr>
+						<td>Anlagengröße</td>
+						<td>{{data['results'][0]['data']['kwp']}} kWp ({{data['results'][0]['data']['number_of_panels']}} Module)</td>
+					</tr>
+					<tr>
+						<td>Jährlicher Ertrag</td>
+						<td>{{data['results'][0]['data']['yearly_yield']}} kWh</td>
+					</tr>
+					<tr>
+						<td>Autarkie</td>
+						<td>{{data['results'][0]['data']['autarky']}} %</td>
+					</tr>	
+					<tr>
+						<td>Eigenverbrauch</td>
+						<td>{{ data['results'][0]['data']['own_consumption'] }} %</td>
+					</tr>					
+					<tr>
+						<td>Vorteil nach 20 Jahren</td>
+						<td>{{data['results'][0]['data']['profit']}} €</td>
+					</tr>	
+					<tr>
+						<td>Amortisationszeit</td>
+						<td>{{ data['results'][0]['data']['years_until_payed_back'] }} Jahre</td>
+					</tr>																				
+					<tr>
+						<td>Jährliche CO<sub>2</sub>-Einsparung</td>
+						<td>{{data['results'][0]['data']['co2_savings']}} t</td>
+					</tr>	
+				</tbody>
+			</table>
+		</div>		
+	</div>
+
+	<div class="row">
+		<div class="col-lg-6">
+			<h4 id="toggle_roofs">Dachflächenübersicht (> 50 m²)</h4> <!-- <i class="fas fa-chevron-circle-right"></i> -->
+
+			{% for r in data['results'][0]['roofs'] %}
+				{% if r["area"] > 50 %}
+					<table class="table table-striped roof_table">
+						<thead>
+							<th>Dachfläche {{ loop.index }}</th>
+						</thead>
+						<tbody>
+							<tr>
+								<td>Größe</td>
+								<td>{{ r["area"] }} m²</td>
+							</tr>
+							<tr>
+								<td>Neigung / Ausrichtung</td>
+								<td>{{ r["tilt"] }}° / {{ r["aspect"] }}°</td>
+							</tr>
+							<tr>
+								<td>Einstrahlung</td>
+								<td>{{ r["radiation"] }} kWh/m² </td>
+							</tr>																				
+						</tbody>
+					</table>
+				{% endif %}
+			{% endfor %}
+		</div>		
+
+		<div class="col-lg-6">
+			<h4>Berechnungsgrundlagen</h4>
+			<table class="table table-striped">
+				<tbody>
+					<tr>
+						<td>Lastprofil</td>
+						<td>{{data['results'][0]['calculation_parameters']['load_profile']}}</td>
+					</tr>
+					<tr>
+						<td>Jährlicher Energieverbrauch</td>
+						<td>{{data['results'][0]['calculation_parameters']['energy_consumption']}} kWh</td>
+					</tr>
+					<tr>
+						<td>Systemverlust</td>
+						<td>{{data['results'][0]['calculation_parameters']['system_loss']}} %</td>
+					</tr>																					
+				</tbody>
+			</table>
+		</div>			
+	</div>
+
+
+
+<button class="btn btn-default" id="toggle_weather">Wetter</button>
+
+<iframe 
+	class="weather"
+	width="100%" 
+	height="300px" 
+	scrolling="no"
+	src="https://api.meteomatics.com/2018-03-18T00:00:00ZP5D:PT1H/global_rad:W/52.4097961,12.5346316/html">
+</iframe>
+</div>
+
+
+
+
+
+<script type="text/javascript">
+	$("#toggle_roofs").click(function(){
+		$(".roof_table").slideToggle( "slow", function() {});
+	});
+	$("#toggle_weather").click(function(){
+		$(".weather").slideToggle( "slow", function() {});
+	});
+
+</script>
+</body>
+</html>
