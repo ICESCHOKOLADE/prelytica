@@ -14,8 +14,8 @@ from helper import *
 import psycopg2
 import psycopg2.extras
 # from base import debug
-
-debug = True
+ 
+debug = False
 
 
 try:
@@ -45,15 +45,14 @@ month_english = {
 
 class PVGIS_DATA(object):
     """docstring for PVGIS_DATA"""
-    def __init__(self, plant_data):
+    def __init__(self, lat, lon, tilt, aspect, gesamtwirkungsgrad):
         super(PVGIS_DATA, self).__init__()
         self.months_init = {"1":{}, "2":{}, "3":{}, "4":{}, "5":{}, "6":{}, "7":{}, "8":{}, "9":{}, "10":{}, "11":{}, "12":{}}
-        self.aspect = plant_data.aspect
-        self.tilt     = plant_data.tilt
-        self.system_loss         = plant_data.system_loss
-        self.module_efficiency     = plant_data.module_efficiency
-        self.lat = plant_data.lat
-        self.lon = plant_data.lon
+        self.aspect = aspect
+        self.tilt = tilt
+        self.efficiency = gesamtwirkungsgrad
+        self.lat = lat
+        self.lon = lon
         self.yearly_radiation = 0
 
         self.data_cached = self.check_cached_data()
@@ -124,7 +123,7 @@ class PVGIS_DATA(object):
         # print "...", self.global_climate_percentage["month"]["1"]
         # print self.yearly_radiation, self.pv_month["1"], self.pv_hour["1"]["11"]
         if debug:
-            print "Yearly radiation on this spot is:", self.yearly_radiation, "kWh/m²"
+            print "Yearly radiation on this roof is:", self.yearly_radiation, "kWh/m²", self.tilt, self.aspect
 
 
 
@@ -225,7 +224,7 @@ class PVGIS_DATA(object):
                  'MAX_FILE_SIZE': '10000',
                  'pvtechchoice': 'crystSi',
                  'peakpower': 1,
-                 'efficiency': self.system_loss * self.module_efficiency * 100,
+                 'efficiency': self.efficiency * 100,
                  'mountingplace': 'building',
                  'angle': self.tilt,
                  'aspectangle': self.aspect,

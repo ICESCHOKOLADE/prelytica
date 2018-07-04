@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>Prelytika | SPA</title>
+	<link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/fontawesome.css" integrity="sha384-q3jl8XQu1OpdLgGFvNRnPdj5VIlCvgsDQTQB6owSOHWlAurxul7f+JpUOVdAiJ5P" crossorigin="anonymous">
+	<link rel="stylesheet" type="text/css" href="/static/css/main.css">
+
+
+
+	<script type="text/javascript" src="/static/js/jquery-3.3.1.min.js"></script>
+	<script type="text/javascript" src="/static/js/highcharts/highcharts.js"></script>
+	
+	<script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+
+
+</head>
+<body>
+
+
+
+
+<div class="container">
+	<img id="ajax_loader" src="../static/img/ajax_loader_blue.gif">
+	<section id="header">
+		
+		<div class="row">
+			<div class="col-lg-12 text-center">
+				<h3 class="">Datenübersicht </h3>
+				<p class="lead">Gebäudeinformationen, Dachflächen, Einstrahlung, Wetterdaten</p>
+			</div>
+		</div>
+	</section>
+	<section id="form">
+		<div class="row">
+			<div class="col-lg-6" >
+				<form id="argument_form">
+					  <div class="form-row">
+					    <div class="form-group col-sm-6">
+					      <label for="lon">Breitengrad</label>
+					      <input type="text" class="form-control" id="lon" name="lon" value="12.506151">
+					    </div>
+					    <div class="form-group col-sm-6">
+					      <label for="lat">Längengrad</label>
+					      <input type="text" class="form-control" id="lat" name="lat" value="52.402958">
+					    </div>
+					  </div>
+
+					  <div class="form-group">
+					    <label for="energy_consumption">Jahresstromverbrauch in kWh</label>
+					    <input type="text" class="form-control" id="energy_consumption" name="energy_consumption" value="10000">
+					  </div>
+
+					  <div class="form-group">
+					    <label for="plant_kwp">Anlagengröße in kWp</label>
+					    <input type="number" class="form-control" id="plant_kwp" name="plant_kwp" value="10">
+					  </div>
+
+					<div class="form-check">
+					  <input class="form-check-input" type="radio" name="load_profile" id="load_profile1" value="g0" checked>
+					  <label class="form-check-label" for="load_profile1">
+					    G0 (Gewerbe allgemein)
+					  </label>
+					</div>
+					<div class="form-check">
+					  <input class="form-check-input" type="radio" name="load_profile" id="load_profile2" value="g2">
+					  <label class="form-check-label" for="load_profile2">
+					    G2 (Gewerbe Abendstundenverbrauch)
+					  </label>
+					</div>
+					<div class="form-check disabled">
+					  <input class="form-check-input" type="radio" name="load_profile" id="load_profile3" value="g4">
+					  <label class="form-check-label" for="load_profile3">
+					    G4 (Gewerbe Laden / Friseur)
+					  </label>
+					</div>				
+					<button type="submit" class="btn btn-primary">Analyse starten</button>
+				
+				</form>
+			</div>
+		</div>
+	
+		
+	</section>
+
+
+
+
+
+	<section id="results">
+		
+		<div class="row">
+			<div class="col-sm-10 offset-sm-1 text-center">
+				<h5>Herzlichen Glückwunsch, Ihr Gebäude ist gut geeignet!</h5>
+				<div id="img_container">
+					<img id="radiation_image" src="">
+					<!-- <img id="roof_image" src=""> -->
+				</div>
+			</div>
+		</div>
+		<div id="result_box">
+			
+			<div class="row">
+				<div class="col-sm-3 offset-sm-1  bgc2 pt1">
+					<h5>Ihre Vorteile im Überblick</h5>
+				</div>
+				<div class="col-sm-7">
+					<div class="row">
+						<div class="col-sm-7  bgc1 pt1">
+							<h5>Ihr jährlicher Vorteil durch Eigenverbrauch</h5>
+							<p>
+								Eigenverbrauchsmenge <span class="_year_kwh_own_consuption"></span> kWh bewertet mit einem Strompreis von 20 ct/kWh netto
+							</p>
+						</div>		
+						<div class="col-sm-5 values bgc1 pt1">
+							<h4><span class="_year_euro_own_consuption"></span> €</h4>
+							
+						</div>	
+					</div>					
+				</div>				
+			</div>
+			<div class="row">
+				<div class="col-sm-3 offset-sm-1  bgc2 pt1">
+				</div>
+				<div class="col-sm-7">
+					<div class="row">
+						<div class="col-sm-7  bgc1 pt1">
+							<h5>Ihr jährlicher Vorteil durch Stromeinspeisung</h5>
+							<p>
+								Derzeitige Einspeisevergütung für <span class="_year_kwh_feed_in"></span> kWh mit 11,51 ct/kWh netto EEG-Vergütung
+							</p>
+						</div>		
+						<div class="col-sm-5 values bgc1 pt1">
+							<h4><span class="_year_euro_feed_in"></span> €</h4>
+							
+						</div>	
+					</div>					
+				</div>				
+			</div>		
+			<div class="row">
+				<div class="col-sm-3 offset-sm-1  bgc2 pt1">
+				</div>
+				<div class="col-sm-7">
+					<div class="row">
+						<div class="col-sm-7  bgc1">
+							<h5>Jährlicher Gesamtvorteil</h5>
+						</div>		
+						<div class="col-sm-5 values bgc1 pt1">
+							<h4><span class="_year_euro_sum"></span> €</h4>
+							
+						</div>	
+					</div>					
+				</div>				
+			</div>	
+		</div>
+	
+	</section>
+
+	<section id="diagram">
+
+		<div class="row">
+			<div class="col-xs-12" style="margin: 0 auto;">
+				
+				<form id="add_diagram_form" class="form-inline">
+					<div class="form-group">
+					  <!-- <label for="data_type">Datentyp</label> -->	
+					  <select class="form-control" id="result_nr">
+					    <option value="1">1</option>
+					  </select>
+					</div>
+
+					<div class="form-group">
+					  <!-- <label for="data_type">Datentyp</label> -->	
+					  <select class="form-control" id="data_type">
+					    <option value="kwh_yield">Solarertrag</option>
+					    <option value="load_profile">Lastprofil</option>
+					    <option value="load_balance">Balance</option>
+					  </select>
+					</div>
+
+					<div class="form-group">
+						  <!-- <label for="month">Monat:</label> -->
+						  <select class="form-control" id="month">
+							<option value="1">January</option>
+							<option value="2">February</option>
+							<option value="3">March</option>
+							<option value="4">April</option>
+							<option value="5">May</option>
+							<option value="6">June</option>
+							<option value="7">July</option>
+							<option value="8">August</option>
+							<option value="9">September</option>
+							<option value="10">October</option>
+							<option value="11">November</option>
+							<option value="12">December</option>
+						  </select>
+					</div>
+
+				  	<button type="submit" class="btn btn-primary ">Hinzufügen</button>
+
+				  	<button id="reset_diagram" class="btn btn-primary">Leeren</button>
+
+				</form>
+			</div>
+		</div>
+
+		<div id="diagram_container" style="min-width: 310px; height: 400px; margin: 0 auto"></div>
+
+	
+	</section>
+
+
+
+	<section id="overview_table">
+
+
+		<table class="table table-striped">
+		  <thead>
+		    <tr>
+		      <th scope="col">#</th>
+		      <th scope="col">Stromverbrauch</th>
+		      <th scope="col">kWp</th>
+		      <th scope="col">Lastprofil</th>
+		      <th scope="col">Autarkie</th>
+		      <th scope="col">Eigenverbrauch</th>
+		      <th scope="col">Vorteil</th>
+		    </tr>
+		  </thead>
+		  <tbody>
+		    <tr id="template" style="display: none;">
+		      <th scope="row">_nr_</th>
+		      <td>_energy_consumption_</td>
+		      <td>_plant_kwp_</td>
+		      <td>_load_profile_</td>
+		      <td>_autarky_</td>
+		      <td>_own_consumption_</td>
+		      <td>_yearly_profit_</td>		      
+		    </tr>
+		  </tbody>
+		</table>		
+
+	</section>
+
+
+
+
+</div>
+
+
+
+
+<script type="text/javascript" src="/static/js/main.js"></script>
+<script type="text/javascript" src="/static/js/diagrams.js"></script>
+
+</body>
+
+
+</html>

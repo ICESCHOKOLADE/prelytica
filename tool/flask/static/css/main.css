@@ -1,0 +1,43 @@
+
+
+body{
+	padding-bottom: 100px;
+	font-size: 0.9rem;
+}
+
+section{
+	padding: 2rem 0rem;
+}
+
+#ajax_loader{
+    position: absolute;
+    right: 0px;
+    width: 30px;		
+    display: none;
+}
+
+section #result_box .values{
+	text-align: right;
+}
+section #result_box .pt1{
+	padding-top: 30px;
+}
+section #result_box {
+	color: white;
+}
+
+section#results #img_container img{
+	padding: 2rem;
+}
+
+.bgc1{
+	background-color: red;
+}
+.bgc2{
+	background-color: grey;
+}
+
+#add_diagram_form .form-group,
+#add_diagram_form button{
+	margin-left: 1rem;
+}
