@@ -3,8 +3,10 @@
 <head>
 	<title>Prelytika | SPA</title>
 	<link rel="stylesheet" type="text/css" href="/static/css/bootstrap.min.css">
+	<link rel="stylesheet" type="text/css" href="/static/css/leaflet.css">
 	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.8/css/fontawesome.css" integrity="sha384-q3jl8XQu1OpdLgGFvNRnPdj5VIlCvgsDQTQB6owSOHWlAurxul7f+JpUOVdAiJ5P" crossorigin="anonymous">
 	<link rel="stylesheet" type="text/css" href="/static/css/main.css">
+
 
 
 
@@ -12,6 +14,7 @@
 	<script type="text/javascript" src="/static/js/highcharts/highcharts.js"></script>
 	
 	<script type="text/javascript" src="/static/js/bootstrap.min.js"></script>
+	<script type="text/javascript" src="/static/js/leaflet.js"></script>
 
 
 </head>
@@ -33,7 +36,13 @@
 	</section>
 	<section id="form">
 		<div class="row">
-			<div class="col-lg-6" >
+			<div class="col-lg-12" >
+				<div id="map"></div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-6 offset-lg-3 " >
 				<form id="argument_form">
 					  <div class="form-row">
 					    <div class="form-group col-sm-6">
@@ -43,6 +52,17 @@
 					    <div class="form-group col-sm-6">
 					      <label for="lat">Längengrad</label>
 					      <input type="text" class="form-control" id="lat" name="lat" value="52.402958">
+					    </div>
+					  </div>
+
+					  <div class="form-row">
+					    <div class="form-group col-sm-6">
+					      <label for="flat_tilt">Flachdach Neigung</label>
+					      <input type="text" class="form-control" id="flat_tilt" name="flat_tilt" value="30">
+					    </div>
+					    <div class="form-group col-sm-6">
+					      <label for="flat_aspect">Flachdach Ausrichtung</label>
+					      <input type="text" class="form-control" id="flat_aspect" name="flat_aspect" value="0">
 					    </div>
 					  </div>
 
@@ -91,7 +111,7 @@
 		
 		<div class="row">
 			<div class="col-sm-10 offset-sm-1 text-center">
-				<h5>Herzlichen Glückwunsch, Ihr Gebäude ist gut geeignet!</h5>
+				<h3>Ihr Gebäude ist mit <span class="_area_suited"></span> m² geeigneter Fläche gut für Photovoltaik geeignet!</h3>
 				<div id="img_container">
 					<img id="radiation_image" src="">
 					<!-- <img id="roof_image" src=""> -->
@@ -149,7 +169,16 @@
 							<h4><span class="_year_euro_sum"></span> €</h4>
 							
 						</div>	
-					</div>					
+					</div>		
+					<div class="row">
+						<div class="col-sm-7  bgc1">
+							<h5>Jährliche CO<sub>2</sub>-Einsparung</h5>
+						</div>		
+						<div class="col-sm-5 values bgc1 pt1">
+							<h4><span class="_year_co2"></span> kg</h4>
+							
+						</div>	
+					</div>									
 				</div>				
 			</div>	
 		</div>
@@ -157,7 +186,11 @@
 	</section>
 
 	<section id="diagram">
-
+		<div class="row">
+			<div class="col-sm-10 offset-sm-1 text-center">
+				<h3>Stündliche Datenvisualisierung</h3>
+			</div>
+		</div>
 		<div class="row">
 			<div class="col-xs-12" style="margin: 0 auto;">
 				
@@ -212,7 +245,11 @@
 
 
 	<section id="overview_table">
-
+		<div class="row">
+			<div class="col-sm-10 offset-sm-1 text-center">
+				<h3>Szenarienübersicht</h3>
+			</div>
+		</div>
 
 		<table class="table table-striped">
 		  <thead>
@@ -220,6 +257,8 @@
 		      <th scope="col">#</th>
 		      <th scope="col">Stromverbrauch</th>
 		      <th scope="col">kWp</th>
+		      <th scope="col">Flachdach Neigung</th>
+		      <th scope="col">Flachdach Ausrichtung</th>
 		      <th scope="col">Lastprofil</th>
 		      <th scope="col">Autarkie</th>
 		      <th scope="col">Eigenverbrauch</th>
@@ -231,6 +270,8 @@
 		      <th scope="row">_nr_</th>
 		      <td>_energy_consumption_</td>
 		      <td>_plant_kwp_</td>
+		      <td>_flat_tilt_</td>
+		      <td>_flat_aspect_</td>
 		      <td>_load_profile_</td>
 		      <td>_autarky_</td>
 		      <td>_own_consumption_</td>

@@ -1,6 +1,7 @@
 var kwh_yield_hour;
 var results = {};
 var chart;
+var c = 0;
 var month_word = {
     1:"January",
     2:"February",
@@ -17,7 +18,6 @@ var month_word = {
 };
 $(document).ready(function(){	
 
-	c = 0;
 	$("#argument_form").submit(function(e){
 		$("#ajax_loader").show();
 	    $.ajax({
@@ -27,6 +27,7 @@ $(document).ready(function(){
 	           dataType: "json",
 	           async:true,  
 	           success: function(data){
+	           		console.log(data);
 	           		results[c+1] = data;
 					setTimeout(function(){
 					  	$("#ajax_loader").hide();
@@ -39,6 +40,7 @@ $(document).ready(function(){
 	           		c=c+1;
 					$("#radiation_image").attr("src",data["tetraeder_data"]["results"][0]["images"]["radiation"]);
 					$("#roof_image").attr("src",data["tetraeder_data"]["results"][0]["images"]["roofs"]);
+	    			$("._area_suited").html(data["tetraeder_data"]["results"][0]["data"]["pv_area_well_suited"] + data["tetraeder_data"]["results"][0]["data"]["pv_area_suited"]);
 
 
 	           }
@@ -59,7 +61,9 @@ $(document).ready(function(){
 		if (data_type=="kwh_yield") {
 			data = results[result_nr][data_type]["hour"][month];
 		}
-		title = month_word[month]+"_"+data_type ;
+		title = result_nr+"_"+month_word[month]+"_"+data_type ;
+		title = title.replace("kwh_yield", "Solarertrag");
+		title = title.replace("load_profile", "Lastprofil");
 		// console.log(data);
 		add_to_diagram(data, title);
 	});
@@ -71,7 +75,9 @@ $(document).ready(function(){
 
 	function handle_result_data(c) {
 	    kwh_yield_hour = results[c]["kwh_yield"]["hour"];
-	    show_hour_diagram(2);
+	    if (c == 1) {
+	    	show_hour_diagram(1);
+	    }
 	    $("._year_kwh_own_consuption").html(Math.round(results[c]["kwh_savings"]["year"]));
 	    year_euro_own_consuption = results[c]["kwh_savings"]["year"] * 0.200;
 	    $("._year_euro_own_consuption").html(Math.round(year_euro_own_consuption));
@@ -79,19 +85,24 @@ $(document).ready(function(){
 	    year_euro_feed_in = results[c]["kwh_feed_in"]["year"] * 0.1151;
 	    $("._year_euro_feed_in").html(Math.round(year_euro_feed_in));
 	    $("._year_euro_sum").html(Math.round(year_euro_feed_in + year_euro_own_consuption));
-	    
+	    $("._year_co2").html(Math.round(results[c]["kwh_savings"]["year"] * 0.46));
+
+
 	    a = $("#overview_table tbody tr").first().attr("id","").html();
 	    a = a.replace("display: none;", "");
 	    a = a.replace("_autarky_", Math.round(parseFloat(results[c]["autarky"])*100, -2));
 	    a = a.replace("_own_consumption_", Math.round(parseFloat(results[c]["own_consumption"])*100, -2));
 	    a = a.replace("_load_profile_", $("input[name='load_profile']:checked:enabled").attr("value"));
 	    a = a.replace("_energy_consumption_", $("input[name='energy_consumption']").val());
+	    a = a.replace("_flat_tilt_", $("input[name='flat_tilt']").val());
+	    a = a.replace("_flat_aspect_", $("input[name='flat_aspect']").val());
 	    a = a.replace("_plant_kwp_", $("input[name='plant_kwp']").val());
 	    a = a.replace("_yearly_profit_", Math.round(year_euro_feed_in + year_euro_own_consuption));
 	    a = a.replace("_nr_", c);
 
 	    $('#overview_table tbody').append("<tr>"+a+"</tr>").show();
 	    console.log(a);
+	    scrollto("results");
 
 
 
@@ -99,6 +110,31 @@ $(document).ready(function(){
 	}
 
 
+	var mymap = L.map('map').setView([52.402958, 12.506151], 17);
+
+	L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibGNlbWFuIiwiYSI6ImNqamZsbG5iMzAzcmgza2w2N2RtN3ZpYWcifQ.dG7i4uKfNvbAzWzOG3g31A', {
+		maxZoom: 18,
+		attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, ' +
+			'<a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, ' +
+			'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+		id: 'mapbox.streets'
+	}).addTo(mymap);
+
+	var marker = L.marker([52.402958, 12.506151])
+	marker.addTo(mymap);
+	mymap.on('click', onMapClick);
+
+	function onMapClick(e) {
+	    marker.setLatLng(e.latlng); 
+
+	    $("#argument_form input[name='lat']").attr("value", e.latlng.lat);
+	    $("#argument_form input[name='lon']").attr("value", e.latlng.lng);
+	}
+
+
+	function scrollto(id){
+		$("html, body").animate({ scrollTop: $("#"+id).offset().top }, 1000);
+	}
 
 
 });

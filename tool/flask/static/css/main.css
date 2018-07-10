@@ -41,3 +41,8 @@ section#results #img_container img{
 #add_diagram_form button{
 	margin-left: 1rem;
 }
+
+#map { 
+	height: 350px; 
+	width: 100%;
+}

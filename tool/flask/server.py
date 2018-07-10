@@ -29,6 +29,10 @@ def tool_request():
 
 	lat = 52.402958
 	lon = 12.506151
+	if "lat" in request.args:
+		lat = float(request.args["lat"])
+	if "lon" in request.args:
+		lon = float(request.args["lon"]	)
 
 	# args = {
 	# 	"load_profile": "g2",

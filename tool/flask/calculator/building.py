@@ -43,6 +43,10 @@ class BUILDING(object):
             if roof["tilt"] < 10:
                 roof["plant_tilt"] = 15
                 roof["plant_aspect"] = 90
+                if "flat_tilt" in self.args:
+                    roof["plant_tilt"] = self.args["flat_tilt"]
+                if "flat_aspect" in self.args:
+                    roof["plant_aspect"] = self.args["flat_aspect"]                    
             else:
                 roof["plant_tilt"] = roof["tilt"]
                 roof["plant_aspect"] = roof["aspect"]                
