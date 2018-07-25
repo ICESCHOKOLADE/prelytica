@@ -56,10 +56,14 @@ $(document).ready(function(){
 		data_type = $('#data_type option:selected').val();
 		month = $('#month option:selected').val();
 		result_nr = $('#result_nr option:selected').val();
-		data = results[result_nr][data_type][month];
-		console.log(results[result_nr]["autarky"]);
+		year = $('#year option:selected').val();
+		// console.log(result_nr, data_type, year, month);
 		if (data_type=="kwh_yield") {
 			data = results[result_nr][data_type]["hour"][month];
+		}else if (data_type=="kwh_yield_historic") {
+			data = results[result_nr]["kwh_yield"]["historic"][parseInt(year)][parseInt(month)][15];
+		} else{
+			data = results[result_nr][data_type][month];
 		}
 		title = result_nr+"_"+month_word[month]+"_"+data_type ;
 		title = title.replace("kwh_yield", "Solarertrag");
@@ -102,7 +106,7 @@ $(document).ready(function(){
 
 	    $('#overview_table tbody').append("<tr>"+a+"</tr>").show();
 	    console.log(a);
-	    scrollto("results");
+	    // scrollto("results");
 
 
 

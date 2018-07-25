@@ -36,8 +36,8 @@ class PLANT(object):
         self.gesamtwirkungsgrad = building_data.gesamtwirkungsgrad
         self.pvgis_data = PVGIS_DATA(building_data.lat, building_data.lon, self.tilt, self.aspect, self.gesamtwirkungsgrad)
         self.pvgis_data_roof = PVGIS_DATA(building_data.lat, building_data.lon, self.roof_tilt, self.roof_aspect, self.gesamtwirkungsgrad)
-        self.pvgis_yearly_roof_radiation = self.pvgis_data_roof.yearly_radiation
-        self.pvgis_yearly_radiation = self.pvgis_data.yearly_radiation
+        self.pvgis_yearly_roof_radiation = self.pvgis_data_roof.yearly_radiation_tilt
+        self.pvgis_yearly_radiation_tilt = self.pvgis_data.yearly_radiation_tilt
         del self.pvgis_data_roof
 
         self.yearly_plant_yield = self.get_yearly_plant_yield()
@@ -46,6 +46,6 @@ class PLANT(object):
         # faktor dachstrahlung tetraeder und pvgis gleicher winkel (Dach!)
         # korrekturfaktor verrechnen mit aufstaenderung
         self.corr_factor = self.pvgis_yearly_roof_radiation / self.analysed_global_rad
-        yearly_yield = self.pvgis_yearly_radiation / self.corr_factor * self.gesamtwirkungsgrad * self.plant_area
+        yearly_yield = self.pvgis_yearly_radiation_tilt / self.corr_factor * self.gesamtwirkungsgrad * self.plant_area
         return yearly_yield
 

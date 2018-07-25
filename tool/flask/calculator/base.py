@@ -8,10 +8,20 @@
 ###
 #######################
 
+
+
+####################
+###
+###		To Do: Einspeisung & Einsparung auf historische Daten berechnen (jeden Tag)
+###
+####################
+
+
 from external_api_pvgis import PVGIS_DATA
 from plant_optimizer import OPTIMIZER
 from plant import PLANT
 from building import BUILDING
+from historic_data import HISTORIC_DATA
 from helper import *
 import psycopg2
 import csv, copy
@@ -37,6 +47,7 @@ class Master(object):
         self.building_data = BUILDING(lat, lon, args)
         # self.building_data.load_profile_code = "g4"
         # self.building_data.load_profile = self.building_data.get_load_profile()
+        self.historic_data = HISTORIC_DATA(self.building_data)
         self.rooflist = {}
 
         i=1
@@ -44,6 +55,7 @@ class Master(object):
             self.rooflist[i] = PLANT(self.building_data, roof)
             self.combine_rad_plant_data(self.rooflist[i])
             self.combine_load_rad_data()
+            self.calc_historic_plant_data(self.rooflist[i])
             self.building_data.total_plant_area += self.rooflist[i].plant_area
             self.building_data.total_plant_kwp += self.rooflist[i].plant_kwp
             i+=1
@@ -75,6 +87,20 @@ class Master(object):
         for m in self.kwh_yield["month"]:
             for h in self.kwh_yield["hour"][m]:
                 self.kwh_yield["hour"][m][h] = round(self.kwh_yield["hour"][m][h],2)
+
+
+    def calc_historic_plant_data(self, roof):
+        # print "ERROR this comination is not correct, due to different sun positions in several hours. Now assuming only that sunrise is the same at every angle"
+        self.kwh_yield["historic"] = copy.deepcopy(self.historic_data.historic_flat)
+        self.kwh_yield["historic"].keys()
+        for year in self.kwh_yield["historic"]:
+            for m in self.kwh_yield["historic"][year]:
+                for d in self.kwh_yield["historic"][year][m]:
+                    for h in self.kwh_yield["historic"][year][m][d]:
+                        self.kwh_yield["historic"][year][m][d][h] /= roof.pvgis_data.tilt_flat_ratio
+                        self.kwh_yield["historic"][year][m][d][h] *= roof.plant_area * roof.gesamtwirkungsgrad
+        print roof.plant_area
+
     
 
 

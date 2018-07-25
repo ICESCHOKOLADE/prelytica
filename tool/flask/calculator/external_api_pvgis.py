@@ -53,7 +53,8 @@ class PVGIS_DATA(object):
         self.efficiency = gesamtwirkungsgrad
         self.lat = lat
         self.lon = lon
-        self.yearly_radiation = 0
+        self.yearly_radiation_tilt = 0
+        self.yearly_radiation_flat = 0
 
         self.data_cached = self.check_cached_data()
         if self.data_cached:
@@ -77,7 +78,7 @@ class PVGIS_DATA(object):
             # this sets self.rad_month
             self.process_pvgis_pv("tab_rad")
             # self.pvgis_scaffold_factor = get_pvgis_scaffold_factor(self.pvgis_rad_monthly)
-            # print self.rad_month
+            # print ".........", self.rad_month
 
             # self.pv_hour = self.months_init.copy()
             # if "Year" in self.pv_hour:
@@ -107,7 +108,7 @@ class PVGIS_DATA(object):
         for m in self.pv_month:
             self.global_climate_percentage[m] = {}
             self.global_climate_percentage["day"][m] = 0
-            self.yearly_radiation += self.pv_month[m]
+            self.yearly_radiation_tilt += self.pv_month[m]
             for h in self.pv_hour[m]:
                 # those day values are not in kWh but kW per quarter hour
                 # calculate monthly percentages
@@ -115,15 +116,20 @@ class PVGIS_DATA(object):
         for m in self.pv_month:
             self.global_climate_percentage["hour"][m] = {}
             for h in self.pv_hour[m]:
-                self.global_climate_percentage["hour"][m][h] = self.pv_hour[m][h] / 4 / self.yearly_radiation
-            self.global_climate_percentage["month"][m] = round(self.pv_month[m] / self.yearly_radiation, 6)
+                self.global_climate_percentage["hour"][m][h] = self.pv_hour[m][h] / 4 / self.yearly_radiation_tilt
+            self.global_climate_percentage["month"][m] = round(self.pv_month[m] / self.yearly_radiation_tilt, 6)
 
 
+        for m in self.rad_month:
+            self.yearly_radiation_flat += self.rad_month[m]
+        self.yearly_radiation_flat = self.yearly_radiation_flat / 1000.0 /12 * 356.25   # sum is for 12 days, so calc for year sum and convert to kWh
+        self.tilt_flat_ratio = self.yearly_radiation_tilt / self.yearly_radiation_flat
+        # print self.yearly_radiation_flat, self.yearly_radiation_tilt, self.tilt_flat_ratio
         # print "---", self.global_climate_percentage["hour"]["1"]
         # print "...", self.global_climate_percentage["month"]["1"]
-        # print self.yearly_radiation, self.pv_month["1"], self.pv_hour["1"]["11"]
+        # print self.yearly_radiation_tilt, self.pv_month["1"], self.pv_hour["1"]["11"]
         if debug:
-            print "Yearly radiation on this roof is:", self.yearly_radiation, "kWh/m²", self.tilt, self.aspect
+            print "Yearly radiation on this roof is:", self.yearly_radiation_tilt, "kWh/m²", self.tilt, self.aspect
 
 
 
@@ -146,8 +152,11 @@ class PVGIS_DATA(object):
 
     def set_cache_data(self):
         query = """ INSERT INTO cache_pvgis (type, data, lat, lon, tilt, aspect)
-                    VALUES ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s)
-                     """%("pv_day", json.dumps(self.pv_day), self.lat, self.lon, self.tilt, self.aspect, "pv_month", json.dumps(self.pv_month), self.lat, self.lon, self.tilt, self.aspect, "pv_hour", json.dumps(self.pv_hour), self.lat, self.lon, self.tilt, self.aspect)
+                    VALUES ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s), ('%s', '%s', %s, %s, %s, %s)
+                     """%("pv_day", json.dumps(self.pv_day), self.lat, self.lon, self.tilt, self.aspect, \
+                        "pv_month", json.dumps(self.pv_month), self.lat, self.lon, self.tilt, self.aspect, \
+                        "pv_hour", json.dumps(self.pv_hour), self.lat, self.lon, self.tilt, self.aspect, \
+                        "rad_month", json.dumps(self.rad_month), self.lat, self.lon, self.tilt, self.aspect)
         # print query
         print "- only setting pv data (orientated)"
         cur.execute(query)        
@@ -164,6 +173,8 @@ class PVGIS_DATA(object):
             elif i["type"] == "pv_hour":
                 self.pv_hour = i["data"]        
                 # print i["data"]
+            elif i["type"] == "rad_month":
+                self.rad_month = i["data"]
             else:
                 print "AND NOW? Data from cache is not set"
 
@@ -208,6 +219,7 @@ class PVGIS_DATA(object):
                 else:
                     self.rad_month[str(v[0])] = int(v[1])
             i = i+1
+
 
         for m in self.pv_month:
             # make keys to integer
