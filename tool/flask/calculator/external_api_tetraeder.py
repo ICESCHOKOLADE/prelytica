@@ -46,18 +46,19 @@ def set_tetraeder_cache(plant, data):
     conn.commit()
 
 
+
+
 def get_data_from_tetraeder(plant):
+    auth = get_auth_data("tetraeder")
 
     if tetraeder_cached(plant):
         return tetraeder_cached(plant)
 
     url = "https://detailskronos.solare-stadt.de/hub/api/lat_lon_search/stadt_brandenburg/%s/%s/"%(plant.lat, plant.lon)
     url += "?energy_consumption=%s&rooflist"%(plant.energy_consumption)
-    username = "th_brandenburg"
-    password = "675tokJSVq2X"
     # print url
 
-    response = requests.get(url, auth=(username, password))
+    response = requests.get(url, auth=(auth["username"], auth["password"]))
     if response.status_code == 200:
         try:
             data = json.loads(response.text)
