@@ -19,6 +19,7 @@ class PLANT(object):
     def __init__(self, building_data, roof):
         super(PLANT, self).__init__()
         # plant could be scaffolded, so take newly set plant angles
+        # print roof
         self.tilt = roof["plant_tilt"]
         self.aspect = roof["plant_aspect"]
         self.roof_tilt = roof["tilt"]

@@ -18,8 +18,8 @@ class BUILDING(object):
     def __init__(self, lat, lon, args):
         super(BUILDING, self).__init__()
         self.args = args
-        self.lat = round(lat,3)
-        self.lon = round(lon,3)
+        self.lat = round(lat,5)
+        self.lon = round(lon,5)
         self.system_loss = 0.14
         self.module_efficiency = 0.15
         self.module_size = 1.635
@@ -36,10 +36,14 @@ class BUILDING(object):
         self.load_profile = self.get_load_profile()
         # load profile is normalized to 1000, so multiply with energy_consumption/1000
         self.potential_data = get_data_from_tetraeder(self)
-        self.roofs = self.potential_data["results"][0]["roofs"]
-        for roof in self.roofs:
+        self.hid = self.potential_data["request"]["hid"]
+        print "HID:", self.hid
+        # print self.potential_data
+        self.roofs = []
+        for roof in self.potential_data["results"][0]["roofs"]:
             if roof["area"] < 30:
-                self.roofs.remove(roof)
+                # self.roofs.remove(roof)
+                continue
             if roof["tilt"] < 10:
                 roof["plant_tilt"] = 15
                 roof["plant_aspect"] = 90
@@ -49,7 +53,8 @@ class BUILDING(object):
                     roof["plant_aspect"] = self.args["flat_aspect"]                    
             else:
                 roof["plant_tilt"] = roof["tilt"]
-                roof["plant_aspect"] = roof["aspect"]                
+                roof["plant_aspect"] = roof["aspect"]
+            self.roofs.append(roof)
 
     def get_load_profile(self):
         load_profile = {}
@@ -57,7 +62,7 @@ class BUILDING(object):
             load_profile[m] = {}
 
         filename = '/home/stefan/prelytica/data/load_profiles/pvsol_%s.csv'%self.load_profile_code
-        print filename
+        # print filename
         with open(filename, mode='r') as infile:
             reader = csv.reader(infile, delimiter=';')
             # This skips the first row of the CSV file.

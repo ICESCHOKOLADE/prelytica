@@ -20,8 +20,8 @@ class HISTORIC_DATA(object):
 	def __init__(self, building):
 		super(HISTORIC_DATA, self).__init__()
 
-		self.lat = round(building.lat,2)
-		self.lon = round(building.lon,2)
+		self.lat = round(building.lat,1)
+		self.lon = round(building.lon,1)
 		# self.args = args
 		self.path = "/home/stefan/prelytica/data/historic/radiation/"
 		self.filename = "%s,%s.csv"%(self.lat, self.lon)

@@ -51,8 +51,8 @@ class PVGIS_DATA(object):
         self.aspect = aspect
         self.tilt = tilt
         self.efficiency = gesamtwirkungsgrad
-        self.lat = lat
-        self.lon = lon
+        self.lat = round(lat,2)
+        self.lon = round(lon,2)
         self.yearly_radiation_tilt = 0
         self.yearly_radiation_flat = 0
 
@@ -180,13 +180,15 @@ class PVGIS_DATA(object):
 
 
     def check_cached_data(self):
-        query = """SELECT * FROM cache_pvgis WHERE lat = %s AND lon = %s AND tilt = %s AND aspect = %s """%(self.lat, self.lon, self.tilt, self.aspect)
+        query = """SELECT type, data FROM cache_pvgis WHERE lat = %s AND lon = %s AND tilt = %s AND aspect = %s """%(self.lat, self.lon, self.tilt, self.aspect)
         cur.execute(query)
         data_cached = cur.fetchall()
         # print query
-        # print data_cached
         if not data_cached:
             data_cached = None
+
+        # print type(data_cached)
+        # print data_cached
         return data_cached
 
     def process_pvgis_pv(self, name):

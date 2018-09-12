@@ -124,6 +124,13 @@ $(document).ready(function(){
 		id: 'mapbox.streets'
 	}).addTo(mymap);
 
+
+	// create the tile layer with correct attribution
+	// L.tileLayer( 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+	//     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+	//     subdomains: ['a','b','c']
+	// }).addTo( mymap );
+
 	var marker = L.marker([52.402958, 12.506151])
 	marker.addTo(mymap);
 	mymap.on('click', onMapClick);

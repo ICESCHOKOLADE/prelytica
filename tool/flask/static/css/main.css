@@ -30,8 +30,13 @@ section#results #img_container img{
 	padding: 2rem;
 }
 
+.btn-primary{
+	background-color: #ff8810;
+	border: 1px solid #ff8810;
+}
+
 .bgc1{
-	background-color: red;
+	background-color: #00a6ff;
 }
 .bgc2{
 	background-color: grey;
@@ -46,3 +51,18 @@ section#results #img_container img{
 	height: 350px; 
 	width: 100%;
 }
+
+#header img{
+	position: absolute;
+	left: 0px;
+	width: 200px;
+}
+
+h4{
+	font-size: 1.4rem;
+	color: #00a6ff;
+}
+/*h4 .number{
+	font-size: 1.8rem;
+	color: red;
+}*/

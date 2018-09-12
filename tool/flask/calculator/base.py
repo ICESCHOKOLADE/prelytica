@@ -99,7 +99,6 @@ class Master(object):
                     for h in self.kwh_yield["historic"][year][m][d]:
                         self.kwh_yield["historic"][year][m][d][h] /= roof.pvgis_data.tilt_flat_ratio
                         self.kwh_yield["historic"][year][m][d][h] *= roof.plant_area * roof.gesamtwirkungsgrad
-        print roof.plant_area
 
     
 
