@@ -1,7 +1,13 @@
 from flask import Flask,render_template, jsonify, request
 import calculator.base as CALC
 import calculator.external_api_tetraeder as tetraeder
+
+# from test import climate_blueprint
+from climate_data.init_data import climate_blueprint
+
 app = Flask(__name__)
+app.register_blueprint(climate_blueprint)
+
 
 @app.route('/')
 def home():
