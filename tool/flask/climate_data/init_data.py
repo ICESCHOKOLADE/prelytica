@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, abort
-import io, csv, base64, os
+import io, csv, base64, os, sys
 
 import matplotlib as mpl
 mpl.use('Agg')
@@ -42,6 +42,7 @@ class ClimateData(object):
 		self.parameter = parameter
 		self.model = model
 		self.path = "/home/stefan/prelytica/data/climate_model/"
+		self.path = "data/climate_model/"
 		self.filename = "timeseries_3h_rca4_%s_%s.txt"%(parameter, model)
 
 		# self.start_year = 1970
@@ -139,7 +140,7 @@ class ClimateData(object):
 
 		print "hier muss weiter gearbeitet werden, Temperatur Skala stimmt nicht"
 
-		# print self.data_dict
+		print self.data_dict
 
 
 

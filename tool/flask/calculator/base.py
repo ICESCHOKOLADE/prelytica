@@ -30,9 +30,10 @@ from sys import getsizeof
 
 try:
     conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+    cur = conn.cursor()
 except:
     print "I am unable to connect to the database"
-cur = conn.cursor()
+
 
 
 debug = True
@@ -192,5 +193,5 @@ print "NEXT: Zusammenführen mehrerer Dachteilflächen, ein gemeinsamer Autarkie
 
 
 
-cur.close()
-conn.close()
+#cur.close()
+#conn.close()

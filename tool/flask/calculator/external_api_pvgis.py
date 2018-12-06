@@ -20,10 +20,11 @@ debug = False
 
 try:
     conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+    # cur = conn.cursor()
+    cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
+
 except:
     print "I am unable to connect to the database"
-# cur = conn.cursor()
-cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 
 
 
