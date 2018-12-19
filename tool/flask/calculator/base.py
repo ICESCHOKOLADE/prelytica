@@ -30,6 +30,7 @@ from sys import getsizeof
 
 try:
     conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+    conn = psycopg2.connect("dbname='postgres' user='postgres' host='localhost' password='tra74ag+'")
     cur = conn.cursor()
 except:
     print "I am unable to connect to the database"

@@ -24,6 +24,7 @@ class HISTORIC_DATA(object):
 		self.lon = round(building.lon,1)
 		# self.args = args
 		self.path = "/home/stefan/prelytica/data/historic/radiation/"
+		self.path = "data/historic/radiation/" 
 		self.filename = "%s,%s.csv"%(self.lat, self.lon)
 		self.file = self.path + self.filename
 		self.meteomatics_data = self.get_data_from_meteomatics()

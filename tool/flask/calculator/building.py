@@ -61,7 +61,10 @@ class BUILDING(object):
         for m in range(1,13):
             load_profile[m] = {}
 
-        filename = '/home/stefan/prelytica/data/load_profiles/pvsol_%s.csv'%self.load_profile_code
+        path = '/home/stefan/prelytica/data/load_profiles/'
+        path = "data/load_profiles/"
+        filename = path+'pvsol_%s.csv'%self.load_profile_code
+        
         # print filename
         with open(filename, mode='r') as infile:
             reader = csv.reader(infile, delimiter=';')

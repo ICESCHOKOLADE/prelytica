@@ -12,7 +12,14 @@ import calendar
 import psycopg2,psycopg2.extras
 
 try:
-    conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+    #conn = psycopg2.connect("dbname='stefan' user='stefan' host='localhost' password='hjkl'")
+    conn = psycopg2.connect(
+        dbname="postgres",
+        user="postgres",
+        password="tra74ag+",
+        host="localhost",
+        port="5432"
+    )
     # cur = conn.cursor()
     cur = conn.cursor(cursor_factory = psycopg2.extras.RealDictCursor)
 except:

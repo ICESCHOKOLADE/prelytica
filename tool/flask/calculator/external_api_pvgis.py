@@ -105,7 +105,6 @@ class PVGIS_DATA(object):
         }
         c = {}
         pvgis_year_sum, pvgis_month_sum = 0,0
-
         for m in self.pv_month:
             self.global_climate_percentage[m] = {}
             self.global_climate_percentage["day"][m] = 0
@@ -168,14 +167,14 @@ class PVGIS_DATA(object):
     def handle_cached_data(self):
         for i in self.data_cached:
             if i["type"] == "pv_day":
-                self.pv_day = i["data"]
+                self.pv_day = json.loads(i["data"])
             elif i["type"] == "pv_month":
-                self.pv_month = i["data"]
+                self.pv_month = json.loads(i["data"])
             elif i["type"] == "pv_hour":
-                self.pv_hour = i["data"]        
+                self.pv_hour = json.loads(i["data"])       
                 # print i["data"]
             elif i["type"] == "rad_month":
-                self.rad_month = i["data"]
+                self.rad_month = json.loads(i["data"])
             else:
                 print "AND NOW? Data from cache is not set"
 
