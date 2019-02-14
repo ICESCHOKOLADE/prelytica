@@ -26,17 +26,6 @@ if not cur:
 
 
 
-def build_graph(x_coordinates, y_coordinates, name):
-	img = io.BytesIO()
-	plt.figure(figsize=(17,3))
-	plt.plot(x_coordinates, y_coordinates)
-	# plt.set_size_inches(18.5, 10.5)
-	plt.savefig(img, format='png')
-	plt.savefig('../../../img/%s.png'%name)
-	img.seek(0)
-	graph_url = base64.b64encode(img.getvalue()).decode()
-	plt.close()
-	return 'data:image/png;base64,{}'.format(graph_url)	
 
 
 
@@ -48,6 +37,7 @@ class PVPLANT(object):
 		self.module_wp = 270
 		self.module_width = 1.65
 		self.module_height = 0.99
+		self.module_temp_koeff = 0.5 # %/K
 		self.module_efficiency = self.module_wp / 1000.0 / (self.module_width * self.module_height)
 
 		self.plant_loss = 0.2
@@ -67,9 +57,14 @@ class PVMODEL(object):
 		self.stations = ["brandenburg", "amsterdam", "minden", "wuerzburg"]
 		# self.stations = ["brandenburg"]
 		self.scenario = "rcp85"
-		self.time = "present"
+		self.time = "future"
 
+		self.rad_unit = "kWh/qm"
+		# self.rad_unit = "W/qm"
 
+		self._climate_loss = True 
+
+		
 		if self.time == "present":
 			self.start_year = 1970
 			self.end_year = 2000
@@ -79,7 +74,10 @@ class PVMODEL(object):
 		self.current_year = self.start_year
 
 
-		# self.tas = self.get_model_data("tas")
+		self.label = self.scenario + "_" + str(self.start_year) + "_" + str(self.end_year)
+
+
+		self.tas = self.get_model_data("tas")
 		self.rsds = self.get_model_data("rsds")
 		# self.pr = self.get_model_data("pr")
 		# print len(self.tas), len(self.pr), len(self.rsds)
@@ -93,9 +91,15 @@ class PVMODEL(object):
 
 		self.energy_yield = self.simulate_pv_plant()
 		self.energy_yield_list = self.convert_energy_yield()
+		self.energy_yield_summary = self.calculate_yield_statistics()
 
-		a = build_graph(self.energy_yield_list["brandenburg"]["years_x"], self.energy_yield_list["brandenburg"]["years_y"], "brandenburg")
-		print a
+		# print self.energy_yield["wuerzburg"]["years"]
+
+
+		x = self.energy_yield_list["wuerzburg"]["years_x"]
+		y = self.energy_yield_list["wuerzburg"]["years_y"]
+		a = self.build_graph("Year", x, "radiation in %s"%self.rad_unit, y, "brandenburg")
+		# print a
 
 
 
@@ -151,29 +155,65 @@ class PVMODEL(object):
 		out = {}
 		for station in self.stations:
 			out[station] = {"years":{}, "course":{}}
+
+		self.current_index = 0
 		for i in time_series:
-			y, m, d, h = i["year"], i["month"], i["day"], i["hour"]/100
+			self.current_y, self.current_m, self.current_d, self.current_h = i["year"], i["month"], i["day"], i["hour"]/100
 			# print y, m, d, h
-			if y == y:
+			if self.current_y == self.current_y:
 				for station in self.stations:
+					self.current_station = station
 					radiation = float(i[station]) * 3.0 / 1000 # convert units
+					# if self.current_y == 2000 and self.current_m== 5:
+						# print radiation
 					energy_yield = radiation * PV_PLANT.efficiency_factor * PV_PLANT.area
+					if self._climate_loss:
+						energy_yield *= (1 - self.calc_climate_loss(PV_PLANT))
+					if self.rad_unit == "kWh/qm":
+						energy_yield = energy_yield / 1000.0 * 8760 # convert from W/qm to kWh/qm
 
-
-					if y not in out[station]["years"]: 
-						out[station]["years"][y] = 0
-						out[station]["course"][y] = {}
+					if self.current_y not in out[station]["years"]: 
+						out[station]["years"][self.current_y] = 0
+						out[station]["course"][self.current_y] = {}
 					else:
-						out[station]["years"][y] += energy_yield
+						out[station]["years"][self.current_y] += energy_yield
 
-					if m not in out[station]["course"][y]: 
-						out[station]["course"][y][m] = 0
+					if self.current_m not in out[station]["course"][self.current_y]: 
+						out[station]["course"][self.current_y][self.current_m] = 0
 					else:
-						out[station]["course"][y][m] += energy_yield			
-
+						out[station]["course"][self.current_y][self.current_m] += energy_yield			
+			self.current_index += 1
 		# print out["brandenburg"]["course"]
 		return out
 
+
+	def calculate_yield_statistics(self):
+		out = {}
+		for i in self.energy_yield_list:		
+			out[i] = {}
+			count, summ = 0, 0
+			# print i, self.energy_yield_list["years_y"]
+			out[i]["mean"] = sum(self.energy_yield_list[i]["years_y"]) / float(len(self.energy_yield_list[i]["years_y"]))
+
+		print "mean", out
+		return out
+
+
+	def calc_climate_loss(self,PV_PLANT):
+		self.climate_loss = 0
+		radiation = float(self.rsds[self.current_index][self.current_station])#* 3.0 / 1000
+		temperature = float(self.tas[self.current_index][self.current_station])
+		# a[str(self.current_y)+"_"+str(self.current_m)"_"+str(self.current_d)]
+		i = 25
+		j = 6.84 # 6.11
+		wind = 0
+		module_temp = temperature + (radiation / (i + j * wind))
+		loss_temp = (module_temp - 25) * PV_PLANT.module_temp_koeff / 100
+		# if self.current_y == 2000 and self.current_m== 7 and self.current_station=="wuerzburg":
+			# print self.current_d, self.current_h, radiation, temperature, module_temp
+			# print loss_temp
+		self.climate_loss = loss_temp
+		return self.climate_loss
 
 	def get_droughts(self):
 		stations_out = {}
@@ -220,6 +260,31 @@ class PVMODEL(object):
 			print u"Es gab in %s %s Dürreperioden"%(station, len(stations_out[station]))
 
 		return stations_out
+
+
+
+
+
+	def build_graph(self, x_name, x_coordinates, y_name, y_coordinates, name):
+		img = io.BytesIO()
+		plt.figure(figsize=(20,10))
+		plt.plot(x_coordinates, y_coordinates)
+		# plt.set_size_inches(18.5, 10.5)
+		plt.xlabel(x_name)
+		plt.ylabel(y_name)
+		plt.title('Radiation in %s'%name)
+		plt.tight_layout()
+		plt.savefig(img, format='png')
+		path_root = os.path.dirname(__file__)
+		name = name+"_"+self.label
+		path = os.path.join(path_root, "../../../img/%s.png"%name)
+		path = os.path.abspath(path)
+		plt.savefig(path, dpi=200)
+		img.seek(0)
+		graph_url = base64.b64encode(img.getvalue()).decode()
+		plt.close()
+		print "  SAVED IMAGE at "+path
+		return 'data:image/png;base64,{}'.format(graph_url)	
 
 
 class Station(object):
