@@ -17,14 +17,12 @@ from db  import *
 import matplotlib as mpl
 mpl.use('Agg')
 import matplotlib.pyplot as plt
+import numpy as np
+
 
 cur = connect_db()
 if not cur:
 	print "NO DATABASE CONNECTED"
-
-
-
-
 
 
 
@@ -54,15 +52,18 @@ class PVMODEL(object):
 	"""docstring for Model"""
 	def __init__(self):
 		super(PVMODEL, self).__init__()
-		self.stations = ["brandenburg", "amsterdam", "minden", "wuerzburg"]
-		# self.stations = ["brandenburg"]
+		self.stations = ["amsterdam", "minden", "brandenburg", "wuerzburg"]
+		# self.stations = ["wuerzburg", "brandenburg", "amsterdam"]
+		# self.stations = ["wuerzburg"]
 		self.scenario = "rcp85"
 		self.time = "future"
+		# self.time = "present"
 
 		self.rad_unit = "kWh/qm"
 		# self.rad_unit = "W/qm"
 
 		self._climate_loss = True 
+		self.climate_loss_data = {}
 
 		
 		if self.time == "present":
@@ -71,6 +72,9 @@ class PVMODEL(object):
 		elif self.time == "future":
 			self.start_year = 2070
 			self.end_year = 2100
+
+		# self.start_year = 1970
+		# self.end_year = 2100
 		self.current_year = self.start_year
 
 
@@ -94,12 +98,124 @@ class PVMODEL(object):
 		self.energy_yield_summary = self.calculate_yield_statistics()
 
 		# print self.energy_yield["wuerzburg"]["years"]
+		self.accumulate_climate_loss()
+		self.graph_create_monthly_climate_loss()
+
+		self.graph_create_yearly_energy_yield()
+
+		# print self.climate_loss_data
 
 
-		x = self.energy_yield_list["wuerzburg"]["years_x"]
-		y = self.energy_yield_list["wuerzburg"]["years_y"]
-		a = self.build_graph("Year", x, "radiation in %s"%self.rad_unit, y, "brandenburg")
-		# print a
+	def accumulate_climate_loss(self):
+		a = {}
+		for station in self.climate_loss_data:
+			a[station] = {}
+			for y in self.climate_loss_data[station]:
+				a[station][y] = {}
+				for m in self.climate_loss_data[station][y]:
+					a[station][y][m] = sum(self.climate_loss_data[station][y][m]) / float(len(self.climate_loss_data[station][y][m]))
+
+		b = {}
+		for station in a:
+			b[station] = {}
+			for y in a[station]:
+				for m in a[station][y]:
+					if m not in b[station]:
+						b[station][m] = []
+					b[station][m].append(a[station][y][m])
+
+		for station in b:
+			b[station]["list"] = []
+			for m in b[station]:
+				if m == "list": continue
+				b[station][m] = round(sum(b[station][m]) / float(len(b[station][m])),6)
+				b[station]["list"].append(b[station][m])
+
+
+		self.climate_loss_accumulated = b
+
+
+	def graph_create_monthly_climate_loss(self):
+		name = "Loss in energy yield due to climate"
+		y = []
+		legend = []
+		for station in self.stations:
+			x = range(1,13)
+			y_station = self.climate_loss_accumulated[station]["list"]
+			y.append(y_station)
+			legend.append(station)
+		cfg = {
+			"y_zero_line": True,
+			"type": "bar",
+		}
+		self.build_graph(name, "Month", x, "percent", y, legend, cfg)		
+
+	def graph_create_yearly_energy_yield(self):
+		name = "Yearly energy yield"
+		y = []
+		legend = []
+		for station in self.stations:
+			x = self.energy_yield_list[station]["years_x"]
+			y_station = self.energy_yield_list[station]["years_y"]
+			y.append(y_station)
+			legend.append(station)
+		cfg= {
+			"type": "plot",
+		}
+		self.build_graph(name, "Year", x, "yield in %s"%self.rad_unit, y, legend, cfg)
+
+
+
+
+	def build_graph(self, name, x_name, x_coordinates, y_name, y_coordinates, legend, cfg=None):
+		N = len(x_coordinates)
+		ind = np.arange(N)  # the x locations for the groups
+
+		fig, ax = plt.subplots()
+
+
+		img = io.BytesIO()
+		if type(y_coordinates) == "list":
+			print "NO LIST GIVEN FOR GRAPH!"
+			return 
+
+		a, i = 0, 0
+		width = 1.0/float(len(y_coordinates))-0.05       # the width of the bars
+		for y in y_coordinates:
+			if cfg["type"] == "bar":
+				ax.bar(ind+a, y, width, label=legend[i].title(), zorder=2)
+				a += width
+			elif cfg["type"] == "plot":
+				ax.plot(x_coordinates, y, label=legend[i].title(), zorder=2)
+			i += 1
+
+		if cfg:
+			if "y_zero_line" in cfg and cfg["y_zero_line"] == True:
+				ax.axhline(0, color='black', lw=1, zorder=1)
+
+		ax.set_xlabel(x_name)
+		ax.set_ylabel(y_name)
+		ax.set_title(name)
+		if cfg["type"] == "bar":
+			ax.set_xticks(ind + width / 2)
+			ax.set_xticklabels(x_coordinates)
+		ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(legend))		
+
+		# plt.rcParams.update({'font.size': 14})
+
+		fig.tight_layout()
+		# fig.set_size_inches(20, 10)
+
+		path_root = os.path.dirname(__file__)
+		name = name+"_"+self.label
+		path = os.path.join(path_root, "../../../img/%s.png"%name)
+		path = os.path.abspath(path)
+		fig.savefig(path, dpi=200)
+		img.seek(0)
+		graph_url = base64.b64encode(img.getvalue()).decode()
+		plt.close()
+		print "  SAVED IMAGE at "+path
+		return 'data:image/png;base64,{}'.format(graph_url)	
 
 
 
@@ -164,13 +280,14 @@ class PVMODEL(object):
 				for station in self.stations:
 					self.current_station = station
 					radiation = float(i[station]) * 3.0 / 1000 # convert units
-					# if self.current_y == 2000 and self.current_m== 5:
-						# print radiation
 					energy_yield = radiation * PV_PLANT.efficiency_factor * PV_PLANT.area
+					# if self.current_y == 2070 and self.current_m == 2:
+						# print ".", radiation, energy_yield					
 					if self._climate_loss:
 						energy_yield *= (1 - self.calc_climate_loss(PV_PLANT))
-					if self.rad_unit == "kWh/qm":
-						energy_yield = energy_yield / 1000.0 * 8760 # convert from W/qm to kWh/qm
+					# if self.rad_unit == "kWh/qm":
+						# das macht keinen SInn, die Einheit wurde ja bereits umgerechnet
+						# energy_yield = energy_yield / 1000.0 * 8760 # convert from W/qm to kWh/qm
 
 					if self.current_y not in out[station]["years"]: 
 						out[station]["years"][self.current_y] = 0
@@ -199,8 +316,16 @@ class PVMODEL(object):
 		return out
 
 
-	def calc_climate_loss(self,PV_PLANT):
+	def calc_climate_loss(self, PV_PLANT):
+		if self.current_station not in self.climate_loss_data:
+			self.climate_loss_data[self.current_station] = {}
+		if self.current_y not in self.climate_loss_data[self.current_station]:
+			self.climate_loss_data[self.current_station][self.current_y] = {}
+		if self.current_m not in self.climate_loss_data[self.current_station][self.current_y]:
+			self.climate_loss_data[self.current_station][self.current_y][self.current_m] = []
 		self.climate_loss = 0
+
+
 		radiation = float(self.rsds[self.current_index][self.current_station])#* 3.0 / 1000
 		temperature = float(self.tas[self.current_index][self.current_station])
 		# a[str(self.current_y)+"_"+str(self.current_m)"_"+str(self.current_d)]
@@ -213,6 +338,8 @@ class PVMODEL(object):
 			# print self.current_d, self.current_h, radiation, temperature, module_temp
 			# print loss_temp
 		self.climate_loss = loss_temp
+
+		self.climate_loss_data[self.current_station][self.current_y][self.current_m].append(self.climate_loss)
 		return self.climate_loss
 
 	def get_droughts(self):
@@ -265,27 +392,6 @@ class PVMODEL(object):
 
 
 
-	def build_graph(self, x_name, x_coordinates, y_name, y_coordinates, name):
-		img = io.BytesIO()
-		plt.figure(figsize=(20,10))
-		plt.plot(x_coordinates, y_coordinates)
-		# plt.set_size_inches(18.5, 10.5)
-		plt.xlabel(x_name)
-		plt.ylabel(y_name)
-		plt.title('Radiation in %s'%name)
-		plt.tight_layout()
-		plt.savefig(img, format='png')
-		path_root = os.path.dirname(__file__)
-		name = name+"_"+self.label
-		path = os.path.join(path_root, "../../../img/%s.png"%name)
-		path = os.path.abspath(path)
-		plt.savefig(path, dpi=200)
-		img.seek(0)
-		graph_url = base64.b64encode(img.getvalue()).decode()
-		plt.close()
-		print "  SAVED IMAGE at "+path
-		return 'data:image/png;base64,{}'.format(graph_url)	
-
 
 class Station(object):
 	"""docstring for Station"""
@@ -294,9 +400,10 @@ class Station(object):
 		self.arg = arg
 		self.name = name
 
+starttime = datetime.datetime.now()
 print "INIT MODEL, FETCHING DATA"
 PVMODEL = PVMODEL()
 
 
-
 print "ENDE"
+print "runtime:", datetime.datetime.now()-starttime
