@@ -58,6 +58,7 @@ class PVMODEL(object):
 		self.scenario = "rcp85"
 		self.time = "future"
 		# self.time = "present"
+		times = ["present", "future"]
 
 		self.rad_unit = "kWh/qm"
 		# self.rad_unit = "W/qm"
@@ -66,45 +67,49 @@ class PVMODEL(object):
 		self.climate_loss_data = {}
 
 		
+
+		for t in times:
+			print "INIT MODEL, FETCHING DATA"
+			print t
+			self.set_years()
+			self.current_year = self.start_year
+
+
+			self.label = self.scenario + "_" + str(self.start_year) + "_" + str(self.end_year)
+			self.time = t
+			self.wind = self.get_model_data("wind")
+			self.tas = self.get_model_data("tas")
+			self.rsds = self.get_model_data("rsds")
+			# self.pr = self.get_model_data("pr")
+			# print len(self.tas), len(self.pr), len(self.rsds)
+
+
+
+			self.drought_threshold = 1.0 # in mm per day
+			self.drought_duration_threshold = 5 # consecutive days
+			# self.droughts = self.get_droughts()
+
+
+			self.energy_yield = self.simulate_pv_plant()
+			self.energy_yield_list = self.convert_energy_yield()
+			self.energy_yield_summary = self.calculate_yield_statistics()
+
+			# print self.energy_yield["wuerzburg"]["years"]
+			self.accumulate_climate_loss()
+			self.graph_create_monthly_climate_loss()
+
+			self.graph_create_yearly_energy_yield()
+
+		# print self.climate_loss_data
+
+
+	def set_years(self):
 		if self.time == "present":
 			self.start_year = 1970
 			self.end_year = 2000
 		elif self.time == "future":
 			self.start_year = 2070
-			self.end_year = 2100
-
-		# self.start_year = 1970
-		# self.end_year = 2100
-		self.current_year = self.start_year
-
-
-		self.label = self.scenario + "_" + str(self.start_year) + "_" + str(self.end_year)
-
-
-		self.tas = self.get_model_data("tas")
-		self.rsds = self.get_model_data("rsds")
-		# self.pr = self.get_model_data("pr")
-		# print len(self.tas), len(self.pr), len(self.rsds)
-
-
-
-		self.drought_threshold = 1.0 # in mm per day
-		self.drought_duration_threshold = 5 # consecutive days
-		# self.droughts = self.get_droughts()
-
-
-		self.energy_yield = self.simulate_pv_plant()
-		self.energy_yield_list = self.convert_energy_yield()
-		self.energy_yield_summary = self.calculate_yield_statistics()
-
-		# print self.energy_yield["wuerzburg"]["years"]
-		self.accumulate_climate_loss()
-		self.graph_create_monthly_climate_loss()
-
-		self.graph_create_yearly_energy_yield()
-
-		# print self.climate_loss_data
-
+			self.end_year = 2100		
 
 	def accumulate_climate_loss(self):
 		a = {}
@@ -267,13 +272,13 @@ class PVMODEL(object):
 
 	def simulate_pv_plant(self):
 		PV_PLANT = PVPLANT()
-		time_series = self.rsds
+		# time_series = self.rsds
 		out = {}
 		for station in self.stations:
 			out[station] = {"years":{}, "course":{}}
 
 		self.current_index = 0
-		for i in time_series:
+		for i in self.rsds:
 			self.current_y, self.current_m, self.current_d, self.current_h = i["year"], i["month"], i["day"], i["hour"]/100
 			# print y, m, d, h
 			if self.current_y == self.current_y:
@@ -328,10 +333,10 @@ class PVMODEL(object):
 
 		radiation = float(self.rsds[self.current_index][self.current_station])#* 3.0 / 1000
 		temperature = float(self.tas[self.current_index][self.current_station])
+		wind = float(self.wind[self.current_index][self.current_station])
 		# a[str(self.current_y)+"_"+str(self.current_m)"_"+str(self.current_d)]
 		i = 25
 		j = 6.84 # 6.11
-		wind = 0
 		module_temp = temperature + (radiation / (i + j * wind))
 		loss_temp = (module_temp - 25) * PV_PLANT.module_temp_koeff / 100
 		# if self.current_y == 2000 and self.current_m== 7 and self.current_station=="wuerzburg":
@@ -401,7 +406,7 @@ class Station(object):
 		self.name = name
 
 starttime = datetime.datetime.now()
-print "INIT MODEL, FETCHING DATA"
+
 PVMODEL = PVMODEL()
 
 
