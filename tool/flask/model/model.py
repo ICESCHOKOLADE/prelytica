@@ -38,7 +38,7 @@ class PVPLANT(object):
 		self.module_temp_koeff = 0.5 # %/K
 		self.module_efficiency = self.module_wp / 1000.0 / (self.module_width * self.module_height)
 
-		self.plant_loss = 0.2
+		self.plant_loss = 0.08 # without temp loss and so on! Just technical losses
 		self.efficiency_factor = self.module_efficiency * (1 - self.plant_loss)
 		# print self.module_efficiency, self.efficiency_factor
 
@@ -52,36 +52,61 @@ class PVMODEL(object):
 	"""docstring for Model"""
 	def __init__(self):
 		super(PVMODEL, self).__init__()
+		self.timesteps_per_day = 8
 		self.stations = ["amsterdam", "minden", "brandenburg", "wuerzburg"]
 		# self.stations = ["wuerzburg", "brandenburg", "amsterdam"]
-		# self.stations = ["wuerzburg"]
+		# self.stations = ["minden"]
 		self.scenario = "rcp85"
 		self.time = "future"
 		# self.time = "present"
 		times = ["present", "future"]
+		# times = ["present"]
 
 		self.rad_unit = "kWh/qm"
 		# self.rad_unit = "W/qm"
 
 		self._climate_loss = True 
+		self._deposit_loss = True
+		self.climate_loss_cfg = {
+			"deposit_start": 3, # month
+			"deposit_end": 9, #month
+			"rain_clean_treshold": 4, # in mm/m² bzw. l/m² per ...
+			"rain_clean_interval": 3, # in timesteps
+			"deposit_loss_day": 0.01, # per day in percent
+		}
+		self.climate_loss_cfg["deposit_loss_timestep"] = self.climate_loss_cfg["deposit_loss_day"] / float(self.timesteps_per_day) 
 		self.climate_loss_data = {}
 
 		
 
 		for t in times:
-			print "INIT MODEL, FETCHING DATA"
-			print t
+			print "INIT MODEL, FETCHING DATA FOR", t
+			self.time = t
 			self.set_years()
 			self.current_year = self.start_year
 
+			self.temporary_data = {}
 
 			self.label = self.scenario + "_" + str(self.start_year) + "_" + str(self.end_year)
 			self.time = t
 			self.wind = self.get_model_data("wind")
 			self.tas = self.get_model_data("tas")
 			self.rsds = self.get_model_data("rsds")
-			# self.pr = self.get_model_data("pr")
+			self.pr = self.get_model_data("pr")
 			# print len(self.tas), len(self.pr), len(self.rsds)
+
+			# if self._climate_loss == True:
+			# 	self.temporary_data["last_dry_period"] = {}
+			# 	print 1
+			# 	for t in self.pr:
+			# 		if int(t["month"]) >= self.climate_loss_cfg["deposit_start"]-1:
+			# 			print t
+
+			# 			exit()	
+			# 			for station in self.stations:
+			# 				# self.temporary_data["last_dry_period"][station] = 1
+			# 				a = float(t[station])
+
 
 
 
@@ -101,7 +126,8 @@ class PVMODEL(object):
 			self.graph_create_yearly_energy_yield()
 
 		# print self.climate_loss_data
-
+		print "TODO: Graphische Ausgabe der Parameter Temperatur und Strahlung"
+		print "TODO: (Graphische) Ausgabe der Zusammensetzung des Verlusts durch Klima (Temp & Ablagerung)"
 
 	def set_years(self):
 		if self.time == "present":
@@ -112,6 +138,7 @@ class PVMODEL(object):
 			self.end_year = 2100		
 
 	def accumulate_climate_loss(self):
+		print "ATTENTION: be aware, loss accumulated is mean of all values, even at night, so less amplitudes"
 		a = {}
 		for station in self.climate_loss_data:
 			a[station] = {}
@@ -119,6 +146,7 @@ class PVMODEL(object):
 				a[station][y] = {}
 				for m in self.climate_loss_data[station][y]:
 					a[station][y][m] = sum(self.climate_loss_data[station][y][m]) / float(len(self.climate_loss_data[station][y][m]))
+					# print station, y, m, len(self.climate_loss_data[station][y][m]), a[station][y][m]
 
 		b = {}
 		for station in a:
@@ -286,22 +314,23 @@ class PVMODEL(object):
 					self.current_station = station
 					radiation = float(i[station]) * 3.0 / 1000 # convert units
 					energy_yield = radiation * PV_PLANT.efficiency_factor * PV_PLANT.area
-					# if self.current_y == 2070 and self.current_m == 2:
-						# print ".", radiation, energy_yield					
 					if self._climate_loss:
 						energy_yield *= (1 - self.calc_climate_loss(PV_PLANT))
+
+					# if self.current_y == 2070 and self.current_m == 5 and station == "wuerzburg":
+						# print ".", radiation, energy_yield, 1-self.calc_climate_loss(PV_PLANT), PV_PLANT.efficiency_factor, PV_PLANT.area
 					# if self.rad_unit == "kWh/qm":
 						# das macht keinen SInn, die Einheit wurde ja bereits umgerechnet
 						# energy_yield = energy_yield / 1000.0 * 8760 # convert from W/qm to kWh/qm
 
 					if self.current_y not in out[station]["years"]: 
-						out[station]["years"][self.current_y] = 0
+						out[station]["years"][self.current_y] = energy_yield
 						out[station]["course"][self.current_y] = {}
 					else:
 						out[station]["years"][self.current_y] += energy_yield
 
 					if self.current_m not in out[station]["course"][self.current_y]: 
-						out[station]["course"][self.current_y][self.current_m] = 0
+						out[station]["course"][self.current_y][self.current_m] = energy_yield
 					else:
 						out[station]["course"][self.current_y][self.current_m] += energy_yield			
 			self.current_index += 1
@@ -322,6 +351,8 @@ class PVMODEL(object):
 
 
 	def calc_climate_loss(self, PV_PLANT):
+		# climate loss is the loss due to high temperature, sediments and rain
+
 		if self.current_station not in self.climate_loss_data:
 			self.climate_loss_data[self.current_station] = {}
 		if self.current_y not in self.climate_loss_data[self.current_station]:
@@ -337,15 +368,65 @@ class PVMODEL(object):
 		# a[str(self.current_y)+"_"+str(self.current_m)"_"+str(self.current_d)]
 		i = 25
 		j = 6.84 # 6.11
-		module_temp = temperature + (radiation / (i + j * wind))
-		loss_temp = (module_temp - 25) * PV_PLANT.module_temp_koeff / 100
-		# if self.current_y == 2000 and self.current_m== 7 and self.current_station=="wuerzburg":
-			# print self.current_d, self.current_h, radiation, temperature, module_temp
-			# print loss_temp
-		self.climate_loss = loss_temp
+		temp_din = 25 # this is the temperature of the test in controlled environment
+		temp_module = temperature + (radiation / (i + j * wind))
+		temp_loss = (temp_module - temp_din) * PV_PLANT.module_temp_koeff / 100
+		# print self.current_y
+		# if self.current_y == 2071 and self.current_m in [1,6] and self.current_d == 15 and self.current_station=="wuerzburg":
+			# print self.current_d, self.current_h, radiation, temperature, temp_module, temp_loss
+
+		# if self.current_m >= 3 and self.current_m <= 9:
+			# now do dust and organic pollution
+			# check how long no rain is needed to let efficiency sink
+			# define a efficiency loss per day without rain?
+			# how much rain is needed for cleaning?
+			# check x days before now?
+			# better: check when last rain set loss to 0, save this time index and start from there, store in self.temporary_data["xxx"]
+			# before this function iter through PR and detect first rain event (set to zero) bevore start_month_dust calculation (define in cfg)
+			# bei Niederschlag jeden einzelnen Tag betrachten, nicht Durchschnitt (Reinigungswirkung)
+
+		self.climate_loss = temp_loss
+
+		if self._deposit_loss == True:
+			i = self.current_index
+			if "last_dry_period" not in self.temporary_data:
+				self.temporary_data["last_dry_period"] = {}
+				self.temporary_data["last_dry_period_temp"] = {}
+			# if self.current_station not in self.temporary_data["last_dry_period"]:
+			self.temporary_data["last_dry_period_temp"][self.current_station] = [float(self.pr[i][self.current_station])]
+			self.temporary_data["last_dry_period"][self.current_station] = False
+
+			while sum(self.temporary_data["last_dry_period_temp"][self.current_station]) < self.climate_loss_cfg["rain_clean_treshold"]:
+				i -= 1
+				if i < 0:
+					break
+				# self.temporary_data["last_dry_period_temp"][self.current_station].pop(0)
+					
+				pr = float(self.pr[i][self.current_station])
+				self.temporary_data["last_dry_period_temp"][self.current_station].append(pr)
+				self.temporary_data["last_dry_period"][self.current_station] = i
+			
+			# print self.current_index, self.current_d,self.current_m,  self.current_h
+			# print sum(self.temporary_data["last_dry_period_temp"][self.current_station]),len(self.temporary_data["last_dry_period_temp"][self.current_station]), self.temporary_data["last_dry_period_temp"]
+
+			deposit_loss = self.climate_loss_cfg["deposit_loss_timestep"] * len(self.temporary_data["last_dry_period_temp"][self.current_station])
+			# print deposit_loss, temp_loss
+
+			# print self.temporary_data["last_dry_period_temp"]
+			# print self.get_date_of_index(self.pr[self.temporary_data["last_dry_period"][self.current_station]])
+
+			self.climate_loss += deposit_loss
 
 		self.climate_loss_data[self.current_station][self.current_y][self.current_m].append(self.climate_loss)
 		return self.climate_loss
+
+
+	def get_date_of_index(self, i):
+		year = i["year"]
+		month = i["month"]
+		day = i["day"]
+		hour = i["hour"]
+		return "%s-%s-%s %s"%(year, month, day, hour)
 
 	def get_droughts(self):
 		stations_out = {}
