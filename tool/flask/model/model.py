@@ -38,7 +38,7 @@ class PVPLANT(object):
 		self.module_temp_koeff = 0.5 # %/K
 		self.module_efficiency = self.module_wp / 1000.0 / (self.module_width * self.module_height)
 
-		self.plant_loss = 0.08 # without temp loss and so on! Just technical losses
+		self.plant_loss = 0.12 # without temp loss and so on! Just technical losses
 		self.efficiency_factor = self.module_efficiency * (1 - self.plant_loss)
 		# print self.module_efficiency, self.efficiency_factor
 
@@ -57,15 +57,16 @@ class PVMODEL(object):
 		# self.stations = ["wuerzburg", "brandenburg", "amsterdam"]
 		# self.stations = ["minden"]
 		self.scenario = "rcp85"
-		self.time = "future"
-		# self.time = "present"
 		times = ["present", "future"]
+		times = ["present"]
 		# times = ["present"]
 
 		self.rad_unit = "kWh/qm"
 		# self.rad_unit = "W/qm"
 
-		self._climate_loss = True 
+		self._climate_loss = False 
+		if self._climate_loss == False:
+			print "ATTENTION: no climate loss calculated"
 		self._deposit_loss = True
 		self.climate_loss_cfg = {
 			"deposit_start": 3, # month
@@ -114,28 +115,33 @@ class PVMODEL(object):
 			self.drought_duration_threshold = 5 # consecutive days
 			# self.droughts = self.get_droughts()
 
-
 			self.energy_yield = self.simulate_pv_plant()
 			self.energy_yield_list = self.convert_energy_yield()
 			self.energy_yield_summary = self.calculate_yield_statistics()
 
 			# print self.energy_yield["wuerzburg"]["years"]
-			self.accumulate_climate_loss()
-			self.graph_create_monthly_climate_loss()
+			if self._climate_loss:
+				self.accumulate_climate_loss()
+				self.graph_create_monthly_climate_loss()
 
 			self.graph_create_yearly_energy_yield()
 
+			print "FINISHED %s, now continue"%t
+
 		# print self.climate_loss_data
+		print "TODO: Biaskorrektur der Klimaparameter (rsds, T, Wind, NS) anhand DWD-Daten. Mittel (DWD) für 12 MOnate aus verfügbaren Jahren, auch verwenden für Zukunft; Header aus ASC-Dateien für QGIS entfernen"
 		print "TODO: Graphische Ausgabe der Parameter Temperatur und Strahlung"
 		print "TODO: (Graphische) Ausgabe der Zusammensetzung des Verlusts durch Klima (Temp & Ablagerung)"
 
 	def set_years(self):
 		if self.time == "present":
 			self.start_year = 1970
-			self.end_year = 2000
+			self.end_year = 2010
 		elif self.time == "future":
-			self.start_year = 2070
+			self.start_year = 2050
 			self.end_year = 2100		
+
+
 
 	def accumulate_climate_loss(self):
 		print "ATTENTION: be aware, loss accumulated is mean of all values, even at night, so less amplitudes"
@@ -146,7 +152,7 @@ class PVMODEL(object):
 				a[station][y] = {}
 				for m in self.climate_loss_data[station][y]:
 					a[station][y][m] = sum(self.climate_loss_data[station][y][m]) / float(len(self.climate_loss_data[station][y][m]))
-					# print station, y, m, len(self.climate_loss_data[station][y][m]), a[station][y][m]
+					# print station, y, m, len(self.climate_loss_data[station][y][m]), a[station][y][m], sum(self.climate_loss_data[station][y][m])
 
 		b = {}
 		for station in a:
@@ -306,22 +312,23 @@ class PVMODEL(object):
 			out[station] = {"years":{}, "course":{}}
 
 		self.current_index = 0
+		a,b = 0,0
 		for i in self.rsds:
 			self.current_y, self.current_m, self.current_d, self.current_h = i["year"], i["month"], i["day"], i["hour"]/100
-			# print y, m, d, h
 			if self.current_y == self.current_y:
 				for station in self.stations:
 					self.current_station = station
 					radiation = float(i[station]) * 3.0 / 1000 # convert units
 					energy_yield = radiation * PV_PLANT.efficiency_factor * PV_PLANT.area
+					# this leads to weird mean value (factor 8760?)
+					energy_yield = radiation 
 					if self._climate_loss:
 						energy_yield *= (1 - self.calc_climate_loss(PV_PLANT))
-
-					# if self.current_y == 2070 and self.current_m == 5 and station == "wuerzburg":
-						# print ".", radiation, energy_yield, 1-self.calc_climate_loss(PV_PLANT), PV_PLANT.efficiency_factor, PV_PLANT.area
-					# if self.rad_unit == "kWh/qm":
-						# das macht keinen SInn, die Einheit wurde ja bereits umgerechnet
-						# energy_yield = energy_yield / 1000.0 * 8760 # convert from W/qm to kWh/qm
+					# if self.current_y == 2005 and self.current_m == 5 and station == "wuerzburg":
+						# print ".", self.current_h, radiation, float(i[station])
+						# a=a+radiation
+						# b=b+float(i[station])
+						# print "SUM a", a, b
 
 					if self.current_y not in out[station]["years"]: 
 						out[station]["years"][self.current_y] = energy_yield
@@ -353,13 +360,30 @@ class PVMODEL(object):
 	def calc_climate_loss(self, PV_PLANT):
 		# climate loss is the loss due to high temperature, sediments and rain
 
+		if "loss_temperature" not in self.climate_loss_data:
+			self.climate_loss_data["loss_temperature"] = {}
+		if "loss_pollution" not in self.climate_loss_data:
+			self.climate_loss_data["loss_pollution"] = {}			
+
 		if self.current_station not in self.climate_loss_data:
 			self.climate_loss_data[self.current_station] = {}
+			self.climate_loss_data["loss_temperature"][self.current_station] = {}
+			self.climate_loss_data["loss_pollution"][self.current_station] = {}
+
 		if self.current_y not in self.climate_loss_data[self.current_station]:
 			self.climate_loss_data[self.current_station][self.current_y] = {}
+			self.climate_loss_data["loss_temperature"][self.current_station][self.current_y] = {}
+			self.climate_loss_data["loss_pollution"][self.current_station][self.current_y] = {}
+
 		if self.current_m not in self.climate_loss_data[self.current_station][self.current_y]:
 			self.climate_loss_data[self.current_station][self.current_y][self.current_m] = []
+			self.climate_loss_data["loss_temperature"][self.current_station][self.current_y][self.current_m] = []
+			self.climate_loss_data["loss_pollution"][self.current_station][self.current_y][self.current_m] = []
+
 		self.climate_loss = 0
+		loss_temperature = 0
+		loss_pollution = 0
+		# print "Stopped here"
 
 
 		radiation = float(self.rsds[self.current_index][self.current_station])#* 3.0 / 1000

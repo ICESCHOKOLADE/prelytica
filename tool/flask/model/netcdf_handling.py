@@ -81,3 +81,5 @@ while month <= 12:
 date = "1970-5-15"
 data = get_netcdf_data_for_date(lat, lon, parameter, date)
 # print date,":", data
+
+cs = plt.contourf(data[0,0,::-1,:] )
